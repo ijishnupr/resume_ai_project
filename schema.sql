@@ -1,0 +1,55 @@
+CREATE TABLE app_user (
+    id SERIAL PRIMARY KEY,
+    user_code VARCHAR(100) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE interview (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_date TIMESTAMP WITH TIME ZONE 
+
+);
+
+CREATE TYPE interview_status_enum AS ENUM (
+    'SCHEDULED',
+    'ACTIVE',
+    'SESSION_CLOSED',
+    'COMPLETED',
+    'TERMINATED'
+);
+
+CREATE TABLE interview_status (
+    id SERIAL PRIMARY KEY,
+    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
+    status interview_status_enum NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP WITH TIME ZONE DEFAULT '2100-01-01 00:00:00+00', 
+    
+);
+
+CREATE TABLE interview_session(
+    id SERIAL PRIMARY KEY,
+    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
+    session_data TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE interview_violation (
+    id SERIAL PRIMARY KEY,
+    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
+    violation_type VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE interview_transcript(
+    id SERIAL PRIMARY KEY,
+    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
+    transcript_data TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
