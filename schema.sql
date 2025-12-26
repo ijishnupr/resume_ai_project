@@ -1,4 +1,4 @@
-CREATE TABLE app_user (
+CREATE TABLE interview_candidate (
     id SERIAL PRIMARY KEY,
     password TEXT ,
     is_active BOOLEAN DEFAULT TRUE,
@@ -6,17 +6,17 @@ CREATE TABLE app_user (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE app_user
-ADD COLUMN IF NOT EXISTS email VARCHAR(50) UNIQUE;
+ALTER TABLE interview_candidate
+ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE;
 
-ALTER TABLE app_user
+ALTER TABLE interview_candidate
 ADD COLUMN IF NOT EXISTS is_reset_password BOOLEAN DEFAULT FALSE;
 
 
 CREATE TABLE user_session (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-    refresh_token TEXT UNIQUE NOT NULL,                                
+    user_id INTEGER NOT NULL REFERENCES interview_candidate(id) ON DELETE CASCADE,
+    refresh_token TEXT UNIQUE NOT NULL,
     ip_address INET,
     user_agent TEXT,
     metadata JSONB,
@@ -26,11 +26,12 @@ CREATE TABLE user_session (
 );
 
 
+
 CREATE TABLE interview (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES interview_candidate(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_date TIMESTAMP WITH TIME ZONE 
+    last_date TIMESTAMP WITH TIME ZONE
 
 );
 
@@ -42,6 +43,10 @@ ADD COLUMN IF NOT EXISTS job_requisition_id VARCHAR(100);
 ALTER TABLE interview
 ADD COLUMN IF NOT EXISTS resume_id VARCHAR(100) ;
 
+ALTER TABLE interview
+ADD CONSTRAINT uq_interview_user_resume
+UNIQUE (user_id, resume_id);
+
 
 
 CREATE TYPE interview_status_enum AS ENUM (
@@ -52,19 +57,21 @@ CREATE TYPE interview_status_enum AS ENUM (
     'TERMINATED'
 );
 
+
+
 CREATE TABLE interview_status (
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
     status interview_status_enum NOT NULL,
     start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     end_time TIMESTAMP WITH TIME ZONE DEFAULT '2100-01-01 00:00:00+00'
-    
+
 );
 
 CREATE TABLE interview_session(
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
-    session_data TEXT NOT NULL,
+    session_data JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -114,3 +121,16 @@ CREATE TABLE resume_detail(
 
 
 
+CREATE TABLE question(
+    id SERIAL PRIMARY KEY,
+    question VARCHAR(500) NOT NULL,
+    is_mandatory BOOLEAN DEFAULT FALSE,
+    preferred_answer VARCHAR(500),
+    sequence_no int NOT NULL
+);
+
+CREATE TABLE answers(
+    id SERIAL PRIMARY KEY,
+    answer VARCHAR(500),
+    question_id INTEGER REFERENCES question(id) ON DELETE CASCADE
+);

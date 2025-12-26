@@ -1,21 +1,19 @@
-import jwt
-from typing import Annotated
 import os
-from dotenv import load_dotenv
-from click.decorators import R
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status, Request
+import jwt
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+
 from src.auth.model import (
     ExchangeRequest,
     LoginRequest,
     PasswordResetRequest,
-    UserV1Request,
 )
 from src.auth.service import (
-    process_password_reset,
-    process_user_info,
-    user_login,
     exchange,
+    process_password_reset,
+    user_login,
 )
 from src.shared.db import get_connection
 
@@ -25,11 +23,6 @@ route = APIRouter()
 
 load_dotenv()
 JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
-
-
-@route.post("/interview/{job_requisition_id}")
-async def userinfo_route(job_requisition_id:int,request: UserV1Request, db=Depends(get_connection)):
-    return await process_user_info(job_requisition_id,request, db)
 
 
 @route.post("/reset-password")
@@ -50,7 +43,7 @@ async def reset_password_route(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Reset token has expired",
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid reset token",
@@ -60,8 +53,10 @@ async def reset_password_route(
 
 # return refresh token
 @route.post("/login")
-async def login_route(client_request:Request,request: LoginRequest, db=Depends(get_connection)):
-    return await user_login(client_request,request, db)
+async def login_route(
+    client_request: Request, request: LoginRequest, db=Depends(get_connection)
+):
+    return await user_login(client_request, request, db)
 
 
 @route.post("/exchange")

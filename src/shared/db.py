@@ -1,8 +1,8 @@
 import os
-import psycopg
-from psycopg_pool import AsyncConnectionPool
+
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 
 load_dotenv()
 DATABASE_URL: str = os.getenv("DATABASE_URL", "")

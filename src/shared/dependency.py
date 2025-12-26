@@ -1,11 +1,11 @@
-from dotenv import load_dotenv
 import os
-from pydantic import BaseModel
+
 import jwt
-from datetime import datetime
-from requests import Request
+from dotenv import load_dotenv
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi import Depends, Request, HTTPException, status
+from pydantic import BaseModel
+from requests import Request
 
 security = HTTPBearer()
 load_dotenv()
@@ -31,7 +31,7 @@ async def has_access(
 
     except HTTPException as he:
         raise he
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",

@@ -1,18 +1,18 @@
 meta {
   name: Inverview
   type: http
-  seq: 1
+  seq: 2
 }
 
 post {
-  url: {{url}}/api/auth/interview/1
+  url: {{url}}/api/interview/1
   body: json
   auth: none
 }
 
 body:json {
   {
-    
+
     "resume_ids":[1,2]
   }
 }

@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from src.router import router
 from src.shared.db import pool
-from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
