@@ -19,7 +19,7 @@ route = APIRouter()
 
 
 # return refresh token
-@route.get("/login")
+@route.post("/login")
 async def login_route(request: LoginRequest, db=Depends(get_connection)):
     return await user_login(request, db)
 
