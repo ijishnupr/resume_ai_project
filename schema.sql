@@ -7,6 +7,23 @@ CREATE TABLE app_user (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE app_user
+ADD COLUMN IF NOT EXISTS email VARCHAR(50) UNIQUE;
+
+CREATE TABLE user_token (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
+    token TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+);
+
+CREATE TABLE password_reset_token (
+    user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+
 CREATE TABLE interview (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
@@ -47,9 +64,20 @@ CREATE TABLE interview_violation (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE interview_transcript(
+CREATE TABLE interview_question(
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
-    transcript_data TEXT NOT NULL,
+    transcript_data TEXT,
+    question VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE interview_answer(
+    id SERIAL PRIMARY KEY,
+    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
+    question_id INTEGER REFERENCES interview_question(id) ON DELETE CASCADE,
+    answer TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
