@@ -1,15 +1,17 @@
+import os
+from dotenv import load_dotenv
 import jwt
 from typing import Annotated
-from fastapi.openapi.models import Header
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 
 
-from auth.service import JWT_SECRET_EMAIL
 from src.authv1.model import PasswordResetRequest, UserV1Request
 from src.shared.db import get_connection
 from src.authv1.service import process_password_reset, process_user_info
 
 route = APIRouter()
+load_dotenv()
+JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
 
 
 @route.post("/interview")
@@ -25,19 +27,16 @@ async def reset_password_route(
     db = Depends(get_connection)
 ):
     try:
-        # 1. Manually decode the token using the specific email secret
         payload = jwt.decode(
             x_token, 
             key=JWT_SECRET_EMAIL, 
             algorithms=["HS256"]
         )
         
-        # 2. Extract user_id
         user_id = payload.get("user_id")
         if not user_id:
             raise Exception("Token payload invalid")
 
-        # 3. Call your service function
         return await process_password_reset(request, user_id, db)
 
     except jwt.ExpiredSignatureError:

@@ -35,7 +35,10 @@ CREATE TABLE interview (
 );
 
 ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS interview_code VARCHAR(100) UNIQUE;
+ADD COLUMN IF NOT EXISTS interview_code VARCHAR(100);
+
+ALTER TABLE interview
+
 
 ALTER TABLE interview
 ADD COLUMN IF NOT EXISTS job_description_id VARCHAR(100);
