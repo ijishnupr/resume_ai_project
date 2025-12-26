@@ -9,7 +9,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
 load_dotenv()
-JWT_SECRET: str  = os.getenv("JWT_SECRET", "")
+JWT_SECRET: str = os.getenv("JWT_SECRET", "")
 
 
 async def user_login(request: LoginRequest, db):
@@ -49,6 +49,8 @@ async def user_login(request: LoginRequest, db):
         insert_token_query, {"user_id": user_record["user_id"], "token": refresh_token}
     )
     return {"refresh_token": refresh_token}
+
+
 async def exchange(request: ExchangeRequest, db):
     conn, cur = db
     get_token_query = """
@@ -64,14 +66,11 @@ async def exchange(request: ExchangeRequest, db):
     token_record = await cur.fetchone()
     if not token_record:
         return {"error": "Invalid refresh token"}
-    data = {
-        "user_id": token_record["user_id"]
-    }
+    data = {"user_id": token_record["user_id"]}
     expire = datetime.now() + timedelta(minutes=30)
     data.update({"exp": expire})
     encoded_jwt = jwt.encode(data, JWT_SECRET, algorithm="HS256")
     return encoded_jwt
-
 
 
 async def request_reset_password(user_code: str, db):
@@ -90,7 +89,6 @@ async def request_reset_password(user_code: str, db):
 
     if not user:
         return {"message": "User not found"}
-    
 
     reset_token = secrets.token_urlsafe(48)
     expires_at = datetime.now() + timedelta(minutes=15)
@@ -107,11 +105,7 @@ async def request_reset_password(user_code: str, db):
     """
     await cur.execute(
         insert_query,
-        {
-            "user_id": user["id"],
-            "token": reset_token,
-            "expires_at": expires_at
-        }
+        {"user_id": user["id"], "token": reset_token, "expires_at": expires_at},
     )
 
     # send temporary reset token
@@ -150,7 +144,7 @@ async def reset_password(token: str, new_password: str, db):
     """
     await cur.execute(
         update_password_query,
-        {"password": hashed_password, "user_id": record["user_id"]}
+        {"password": hashed_password, "user_id": record["user_id"]},
     )
 
     return {"message": "Password reset successful"}
