@@ -12,32 +12,20 @@ load_dotenv()
 JWT_SECRET: str = os.getenv("JWT_SECRET", "")
 
 
-
 class UserPayload(BaseModel):
     user_code: str
     user_id: int
-    exp: datetime
+
 
 async def has_access(
     request: Request, auth_creds: HTTPAuthorizationCredentials = Depends(security)
 ):
     try:
-        
         payload = jwt.decode(
-            auth_creds.credentials, 
-            key=JWT_SECRET, 
-            algorithms=["HS256"]
+            auth_creds.credentials, key=JWT_SECRET, algorithms=["HS256"]
         )
-        
-        user = UserPayload(**payload)
 
-      
-        if user.exp < datetime.now():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        user = UserPayload(**payload)
 
         request.state.user = user
 

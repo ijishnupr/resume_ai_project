@@ -10,5 +10,5 @@ route = APIRouter()
 
 
 @route.get("/")
-async def interview_list_route(request:Request,db=Depends(get_connection)):
-    return list_interview(request.state.user,db)
+async def interview_list_route(request: Request, db=Depends(get_connection)):
+    return list_interview(request.state.user, db)

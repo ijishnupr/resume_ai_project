@@ -1,7 +1,6 @@
 CREATE TABLE app_user (
     id SERIAL PRIMARY KEY,
-    user_code VARCHAR(100) UNIQUE NOT NULL,
-    password TEXT NOT NULL,
+    password TEXT ,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -25,15 +24,6 @@ ALTER TABLE user_token
 ADD CONSTRAINT user_token_user_id_unique UNIQUE (user_id);
 
 
-CREATE TABLE password_reset_token (
-    user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
-    token TEXT UNIQUE NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
-);
-
-ALTER TABLE password_reset_token
-ADD CONSTRAINT password_reset_token_user_id_unique UNIQUE (user_id);
-
 
 
 CREATE TABLE interview (
@@ -46,6 +36,14 @@ CREATE TABLE interview (
 
 ALTER TABLE interview
 ADD COLUMN IF NOT EXISTS interview_code VARCHAR(100) UNIQUE;
+
+ALTER TABLE interview
+ADD COLUMN IF NOT EXISTS job_description_id VARCHAR(100);
+
+ALTER TABLE interview
+ADD COLUMN IF NOT EXISTS resume_id VARCHAR(100) ;
+
+
 
 CREATE TYPE interview_status_enum AS ENUM (
     'SCHEDULED',

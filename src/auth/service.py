@@ -1,33 +1,35 @@
 import os
 from dotenv import load_dotenv
-from asyncio import exceptions
 from datetime import datetime, timedelta
 import secrets
-from src.auth.model import ExchangeRequest, LoginRequest, UserInfoRequest
+from src.auth.model import ExchangeRequest, LoginRequest
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
 load_dotenv()
 JWT_SECRET: str = os.getenv("JWT_SECRET", "")
+JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
 
 
 async def user_login(request: LoginRequest, db):
     conn, cur = db
     get_user_query = """
     SELECT
-        user_code,
+        email,
         password,
-        id as user_id
+        id as user_id,
+        is_reset_password
     FROM
         app_user
     WHERE
-        user_code = %(user_code)s
+        email = %(email)s
     """
-    await cur.execute(get_user_query, {"user_code": request.username})
+    await cur.execute(get_user_query, {"email": request.username})
     user_record = await cur.fetchone()
     if not user_record:
         return {"error": "Invalid usercode"}
+
     password = user_record["password"]
     ph = PasswordHasher()
     try:
@@ -35,6 +37,10 @@ async def user_login(request: LoginRequest, db):
     except VerifyMismatchError:
         return {"error": "Invalid password"}
 
+    if not user_record["is_reset_password"]:
+        data = {"user_id": user_record["user_id"]}
+        encoded_jwt = jwt.encode(data, JWT_SECRET_EMAIL, algorithm="HS256")
+        return {"is_reset_password": False, "token": encoded_jwt}
     refresh_token = secrets.token_urlsafe(64)
     insert_token_query = """
     INSERT INTO 
@@ -48,7 +54,7 @@ async def user_login(request: LoginRequest, db):
     await cur.execute(
         insert_token_query, {"user_id": user_record["user_id"], "token": refresh_token}
     )
-    return {"refresh_token": refresh_token}
+    return {"refresh_token": refresh_token, "is_reset_password": True}
 
 
 async def exchange(request: ExchangeRequest, db):
@@ -67,13 +73,12 @@ async def exchange(request: ExchangeRequest, db):
     if not token_record:
         return {"error": "Invalid refresh token"}
     data = {"user_id": token_record["user_id"]}
-    expire = datetime.now() + timedelta(minutes=30)
-    data.update({"exp": expire})
+
     encoded_jwt = jwt.encode(data, JWT_SECRET, algorithm="HS256")
     return encoded_jwt
 
 
-async def request_reset_password(user_code: str, db):
+async def request_reset_password(email: str, db):
     conn, cur = db
 
     get_user_query = """
@@ -82,9 +87,9 @@ async def request_reset_password(user_code: str, db):
     FROM
         app_user 
     WHERE 
-        user_code = %(user_code)s
+        email = %(email)s
     """
-    await cur.execute(get_user_query, {"user_code": user_code})
+    await cur.execute(get_user_query, {"email": email})
     user = await cur.fetchone()
 
     if not user:
@@ -109,7 +114,10 @@ async def request_reset_password(user_code: str, db):
     )
 
     # send temporary reset token
-    return {"message": "Password reset token generated, check your email.", "reset_token": reset_token}
+    return {
+        "message": "Password reset token generated, check your email.",
+        "reset_token": reset_token,
+    }
 
 
 async def reset_password(token: str, new_password: str, db):
@@ -148,81 +156,3 @@ async def reset_password(token: str, new_password: str, db):
     )
 
     return {"message": "Password reset successful"}
-
-
-async def process_user_info(request: UserInfoRequest, db):
-    conn, cur = db
-
-    get_user_query = """
-    SELECT 
-        id 
-    FROM 
-        app_user 
-    WHERE 
-        user_code = %(user_code)s
-    """
-    await cur.execute(get_user_query, {"user_code": request.user_code})
-    user_record = await cur.fetchone()
-
-    user_id = None
-
-    if user_record:
-        user_id = user_record["id"]
-
-    else:
-        insert_user_query = """
-        INSERT INTO app_user 
-            (user_code, password, email)
-        VALUES 
-            (%(user_code)s, %(password)s, %(email)s)
-        RETURNING id
-        """
-        await cur.execute(
-            insert_user_query,
-            {
-                "user_code": request.user_code,
-                "password": request.password_hash,  # Assumes this is already hashed or intended value
-                "email": request.email,
-            },
-        )
-        new_user = await cur.fetchone()
-        user_id = new_user["id"]
-
-    insert_interview_query = """
-    INSERT INTO 
-        interview 
-        (user_id)
-    VALUES 
-        (%(user_id)s)
-    RETURNING id
-    """
-    await cur.execute(insert_interview_query, {"user_id": user_id})
-    interview_record = await cur.fetchone()
-    interview_id = interview_record["id"]
-
-    interview_code = f"INV-{interview_id}"
-    update_code_query = """
-    UPDATE 
-        interview
-    SET 
-        interview_code = %(interview_code)s
-    WHERE 
-        id = %(id)s
-    """
-    await cur.execute(
-        update_code_query, {"interview_code": interview_code, "id": interview_id}
-    )
-
-    insert_status_query = """
-    INSERT INTO interview_status 
-        (interview_id, status)
-    VALUES 
-        (%(interview_id)s, 'SCHEDULED')
-    """
-    await cur.execute(insert_status_query, {"interview_id": interview_id})
-
-    return {
-        "message": "User processed and interview generated",
-        "user_id": user_id,
-        "interview_id": interview_id,
-    }

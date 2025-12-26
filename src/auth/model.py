@@ -13,9 +13,3 @@ class ExchangeRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     reset_token: str
     new_password: str
-
-class UserInfoRequest(BaseModel):
-    user_code: str
-    password_hash: str | None = None
-    full_name: str | None = None
-    email: str | None = None

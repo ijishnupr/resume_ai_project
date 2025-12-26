@@ -1,0 +1,20 @@
+meta {
+  name: Inverview
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{url}}/api/authv1/interview
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email":"jishnupr@gmai.com",
+    "interview_id":6,
+    "job_description_id":5,
+    "resume_id":6
+  }
+}

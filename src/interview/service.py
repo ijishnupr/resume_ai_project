@@ -1,8 +1,7 @@
-
 from src.shared.dependency import UserPayload
 
 
-async def list_interview(user:UserPayload,db):
+async def list_interview(user: UserPayload, db):
     conn, cur = db
 
     get_interview_query = """
@@ -14,7 +13,5 @@ async def list_interview(user:UserPayload,db):
     """
     await cur.execute(get_interview_query, {"user_id": user.user_id})
     interviews = await cur.fetchall()
-
-    
 
     return {"interviews": interviews}
