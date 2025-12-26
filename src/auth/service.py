@@ -202,10 +202,13 @@ async def user_login(request: LoginRequest, db):
     await cur.execute(
         insert_token_query, {"user_id": user_record["user_id"], "token": refresh_token}
     )
-    return {"refresh_token": refresh_token, "is_reset_password": True}
+    access_token = await exchange(refresh_token,db)
+    response= {"refresh_token": refresh_token, "is_reset_password": True}
+    response.update(access_token)
+    return response
 
 
-async def exchange(request: ExchangeRequest, db):
+async def exchange(refresh_token: str, db):
     conn, cur = db
     get_token_query = """
     SELECT
@@ -216,11 +219,11 @@ async def exchange(request: ExchangeRequest, db):
     WHERE
         ut.token = %(token)s
     """
-    await cur.execute(get_token_query, {"token": request.refresh_token})
+    await cur.execute(get_token_query, {"token": refresh_token})
     token_record = await cur.fetchone()
     if not token_record:
         return {"error": "Invalid refresh token"}
     data = {"user_id": token_record["user_id"]}
 
     encoded_jwt = jwt.encode(data, JWT_SECRET, algorithm="HS256")
-    return encoded_jwt
+    return {"access_token":encoded_jwt}

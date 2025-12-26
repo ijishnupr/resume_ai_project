@@ -66,4 +66,4 @@ async def login_route(request: LoginRequest, db=Depends(get_connection)):
 
 @route.post("/exchange")
 async def exchange_route(request: ExchangeRequest, db=Depends(get_connection)):
-    return await exchange(request, db)
+    return await exchange(request.refresh_token, db)
