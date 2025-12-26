@@ -13,17 +13,17 @@ ALTER TABLE app_user
 ADD COLUMN IF NOT EXISTS is_reset_password BOOLEAN DEFAULT FALSE;
 
 
-CREATE TABLE user_token (
+CREATE TABLE user_session (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
-    token TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    user_id INTEGER NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    refresh_token TEXT UNIQUE NOT NULL,                                
+    ip_address INET,
+    user_agent TEXT,
+    metadata JSONB,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE user_token
-ADD CONSTRAINT user_token_user_id_unique UNIQUE (user_id);
-
-
 
 
 CREATE TABLE interview (
@@ -34,14 +34,10 @@ CREATE TABLE interview (
 
 );
 
-ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS interview_code VARCHAR(100);
-
-ALTER TABLE interview
 
 
 ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS job_description_id VARCHAR(100);
+ADD COLUMN IF NOT EXISTS job_requisition_id VARCHAR(100);
 
 ALTER TABLE interview
 ADD COLUMN IF NOT EXISTS resume_id VARCHAR(100) ;
@@ -95,5 +91,26 @@ CREATE TABLE interview_answer(
     answer TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE candidate_user(
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(50) UNIQUE
+
+);
+
+CREATE TABLE job_requisition (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(500)
+
+);
+
+CREATE TABLE resume_detail(
+    id SERIAL PRIMARY KEY,
+    candidate_user_id INTEGER REFERENCES candidate_user(id) ON DELETE CASCADE,
+    resume_data VARCHAR(400),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 
 

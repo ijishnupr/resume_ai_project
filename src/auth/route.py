@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from click.decorators import R
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status, Request
 from src.auth.model import (
     ExchangeRequest,
     LoginRequest,
@@ -27,9 +27,9 @@ load_dotenv()
 JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
 
 
-@route.post("/interview")
-async def userinfo_route(request: UserV1Request, db=Depends(get_connection)):
-    return await process_user_info(request, db)
+@route.post("/interview/{job_requisition_id}")
+async def userinfo_route(job_requisition_id:int,request: UserV1Request, db=Depends(get_connection)):
+    return await process_user_info(job_requisition_id,request, db)
 
 
 @route.post("/reset-password")
@@ -60,8 +60,8 @@ async def reset_password_route(
 
 # return refresh token
 @route.post("/login")
-async def login_route(request: LoginRequest, db=Depends(get_connection)):
-    return await user_login(request, db)
+async def login_route(client_request:Request,request: LoginRequest, db=Depends(get_connection)):
+    return await user_login(client_request,request, db)
 
 
 @route.post("/exchange")

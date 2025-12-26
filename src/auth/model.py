@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel
 
 
@@ -16,10 +17,7 @@ class ResetPasswordRequest(BaseModel):
 
 
 class UserV1Request(BaseModel):
-    email: str
-    interview_id: int
-    job_description_id: int
-    resume_id: int
+    resume_ids: List[int]
 
 
 class PasswordResetRequest(BaseModel):

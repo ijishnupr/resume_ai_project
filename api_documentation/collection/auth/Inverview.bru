@@ -5,16 +5,14 @@ meta {
 }
 
 post {
-  url: {{url}}/api/auth/interview
+  url: {{url}}/api/auth/interview/1
   body: json
   auth: none
 }
 
 body:json {
   {
-    "email":"jishnupr@gmai.com",
-    "interview_id":6,
-    "job_description_id":5,
-    "resume_id":6
+    
+    "resume_ids":[1,2]
   }
 }
