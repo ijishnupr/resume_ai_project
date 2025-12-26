@@ -120,13 +120,27 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
     ph = PasswordHasher()
    
     encoded_password: str = ph.hash(request.new_password)
+    check_password_reset_available_query = """
+    SELECT
+        id
+    FROM
+        app_user 
+    WHERE
+        id = %(user_id)s and is_reset_password = FALSE
+    """
+    await cur.execute(
+        check_password_reset_available_query,{"user_id":user_id}
+    )
+    user_data = await cur.fetchone()
+    if not user_data:
+        return {"Password is already changed"}
     insert_into_app_user_query = """
     UPDATE
         app_user
     SET
         password = %(new_password)s, is_reset_password = TRUE
     WHERE
-        id = %(user_id)s
+        id = %(user_id)s 
     """
     await cur.execute(
         insert_into_app_user_query,
