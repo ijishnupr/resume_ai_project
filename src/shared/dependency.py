@@ -37,4 +37,3 @@ async def has_access(
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-

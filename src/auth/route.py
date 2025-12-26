@@ -32,25 +32,18 @@ async def userinfo_route(request: UserV1Request, db=Depends(get_connection)):
     return await process_user_info(request, db)
 
 
-
 @route.post("/reset-password")
 async def reset_password_route(
     request: PasswordResetRequest,
-    x_token: Annotated[str, Header()], 
-    db = Depends(get_connection)
+    x_token: Annotated[str, Header()],
+    db=Depends(get_connection),
 ):
     try:
-        payload = jwt.decode(
-            x_token, 
-            key=JWT_SECRET_EMAIL, 
-            algorithms=["HS256"]
-        )
-        
+        payload = jwt.decode(x_token, key=JWT_SECRET_EMAIL, algorithms=["HS256"])
+
         user_id = payload.get("user_id")
         if not user_id:
             raise Exception("Token payload invalid")
-
-        
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -64,6 +57,7 @@ async def reset_password_route(
         )
     return await process_password_reset(request, user_id, db)
 
+
 # return refresh token
 @route.post("/login")
 async def login_route(request: LoginRequest, db=Depends(get_connection)):
@@ -73,5 +67,3 @@ async def login_route(request: LoginRequest, db=Depends(get_connection)):
 @route.post("/exchange")
 async def exchange_route(request: ExchangeRequest, db=Depends(get_connection)):
     return await exchange(request, db)
-
-

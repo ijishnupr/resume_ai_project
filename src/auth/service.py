@@ -1,7 +1,12 @@
 import os
 from dotenv import load_dotenv
 import secrets
-from src.auth.model import ExchangeRequest, LoginRequest, PasswordResetRequest, UserV1Request
+from src.auth.model import (
+    ExchangeRequest,
+    LoginRequest,
+    PasswordResetRequest,
+    UserV1Request,
+)
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -9,8 +14,6 @@ from argon2.exceptions import VerifyMismatchError
 load_dotenv()
 JWT_SECRET: str = os.getenv("JWT_SECRET", "")
 JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
-
-
 
 
 async def process_user_info(request: UserV1Request, db):
@@ -126,7 +129,7 @@ async def process_user_info(request: UserV1Request, db):
 async def process_password_reset(request: PasswordResetRequest, user_id: int, db):
     conn, cur = db
     ph = PasswordHasher()
-   
+
     encoded_password: str = ph.hash(request.new_password)
     check_password_reset_available_query = """
     SELECT
@@ -136,9 +139,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
     WHERE
         id = %(user_id)s and is_reset_password = FALSE
     """
-    await cur.execute(
-        check_password_reset_available_query,{"user_id":user_id}
-    )
+    await cur.execute(check_password_reset_available_query, {"user_id": user_id})
     user_data = await cur.fetchone()
     if not user_data:
         return {"Password is already changed"}
@@ -223,4 +224,3 @@ async def exchange(request: ExchangeRequest, db):
 
     encoded_jwt = jwt.encode(data, JWT_SECRET, algorithm="HS256")
     return encoded_jwt
-
