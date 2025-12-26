@@ -14,14 +14,22 @@ CREATE TABLE user_token (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
     token TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE user_token
+ADD CONSTRAINT user_token_user_id_unique UNIQUE (user_id);
+
 
 CREATE TABLE password_reset_token (
     user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
     token TEXT UNIQUE NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
+
+ALTER TABLE password_reset_token
+ADD CONSTRAINT password_reset_token_user_id_unique UNIQUE (user_id);
+
 
 
 CREATE TABLE interview (
@@ -45,7 +53,7 @@ CREATE TABLE interview_status (
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
     status interview_status_enum NOT NULL,
     start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    end_time TIMESTAMP WITH TIME ZONE DEFAULT '2100-01-01 00:00:00+00', 
+    end_time TIMESTAMP WITH TIME ZONE DEFAULT '2100-01-01 00:00:00+00'
     
 );
 

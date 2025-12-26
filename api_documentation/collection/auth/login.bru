@@ -6,6 +6,13 @@ meta {
 
 get {
   url: {{url}}/api/auth/login
-  body: none
+  body: json
   auth: none
+}
+
+body:json {
+  {
+    "username":"user",
+    "password":"password"
+  }
 }

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from asyncio import exceptions
 from datetime import datetime, timedelta
 import secrets
-from auth.model import ExchangeRequest, LoginRequest
+from src.auth.model import ExchangeRequest, LoginRequest
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError

@@ -1,15 +1,14 @@
 from click.decorators import R
 
 from fastapi import APIRouter, Depends
-from auth.model import (
+from src.auth.model import (
     ExchangeRequest,
     LoginRequest,
     PatchUserRequest,
     ResetPasswordRequest,
 )
-from auth.service import request_reset_password, reset_password, user_login, exchange
-import router
-from shared.db import get_connection
+from src.auth.service import request_reset_password, reset_password, user_login, exchange
+from src.shared.db import get_connection
 
 # only use this auth for admin
 route = APIRouter()
@@ -21,7 +20,7 @@ async def login_route(request: LoginRequest, db=Depends(get_connection)):
     return await user_login(request, db)
 
 
-@route.get("/exchange")
+@route.post("/exchange")
 async def exchange_route(request: ExchangeRequest, db=Depends(get_connection)):
     return await exchange(request, db)
 
@@ -31,7 +30,7 @@ async def userinfo_route(request: PatchUserRequest, db=Depends(get_connection)):
     return {"message": "User info endpoint"}
 
 
-@route.get("{user_code}/reset-password")
+@route.get("/{user_code}/reset-password")
 async def reset_password_request_route(user_code: str, db=Depends(get_connection)):
     return await request_reset_password(user_code, db)
 

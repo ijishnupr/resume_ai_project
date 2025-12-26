@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from src.router import router
-from shared.db import pool
+from src.shared.db import pool
 
 
 @asynccontextmanager
