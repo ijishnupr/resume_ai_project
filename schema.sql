@@ -10,6 +10,10 @@ CREATE TABLE app_user (
 ALTER TABLE app_user
 ADD COLUMN IF NOT EXISTS email VARCHAR(50) UNIQUE;
 
+ALTER TABLE app_user
+ADD COLUMN IF NOT EXISTS is_reset_password BOOLEAN DEFAULT FALSE;
+
+
 CREATE TABLE user_token (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES app_user(id) ON DELETE CASCADE,
@@ -39,6 +43,9 @@ CREATE TABLE interview (
     last_date TIMESTAMP WITH TIME ZONE 
 
 );
+
+ALTER TABLE interview
+ADD COLUMN IF NOT EXISTS interview_code VARCHAR(100) UNIQUE;
 
 CREATE TYPE interview_status_enum AS ENUM (
     'SCHEDULED',

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from asyncio import exceptions
 from datetime import datetime, timedelta
 import secrets
-from src.auth.model import ExchangeRequest, LoginRequest
+from src.auth.model import ExchangeRequest, LoginRequest, UserInfoRequest
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -109,7 +109,7 @@ async def request_reset_password(user_code: str, db):
     )
 
     # send temporary reset token
-    return {"message": "Password reset token generated, check your email."}
+    return {"message": "Password reset token generated, check your email.", "reset_token": reset_token}
 
 
 async def reset_password(token: str, new_password: str, db):
@@ -148,3 +148,81 @@ async def reset_password(token: str, new_password: str, db):
     )
 
     return {"message": "Password reset successful"}
+
+
+async def process_user_info(request: UserInfoRequest, db):
+    conn, cur = db
+
+    get_user_query = """
+    SELECT 
+        id 
+    FROM 
+        app_user 
+    WHERE 
+        user_code = %(user_code)s
+    """
+    await cur.execute(get_user_query, {"user_code": request.user_code})
+    user_record = await cur.fetchone()
+
+    user_id = None
+
+    if user_record:
+        user_id = user_record["id"]
+
+    else:
+        insert_user_query = """
+        INSERT INTO app_user 
+            (user_code, password, email)
+        VALUES 
+            (%(user_code)s, %(password)s, %(email)s)
+        RETURNING id
+        """
+        await cur.execute(
+            insert_user_query,
+            {
+                "user_code": request.user_code,
+                "password": request.password_hash,  # Assumes this is already hashed or intended value
+                "email": request.email,
+            },
+        )
+        new_user = await cur.fetchone()
+        user_id = new_user["id"]
+
+    insert_interview_query = """
+    INSERT INTO 
+        interview 
+        (user_id)
+    VALUES 
+        (%(user_id)s)
+    RETURNING id
+    """
+    await cur.execute(insert_interview_query, {"user_id": user_id})
+    interview_record = await cur.fetchone()
+    interview_id = interview_record["id"]
+
+    interview_code = f"INV-{interview_id}"
+    update_code_query = """
+    UPDATE 
+        interview
+    SET 
+        interview_code = %(interview_code)s
+    WHERE 
+        id = %(id)s
+    """
+    await cur.execute(
+        update_code_query, {"interview_code": interview_code, "id": interview_id}
+    )
+
+    insert_status_query = """
+    INSERT INTO interview_status 
+        (interview_id, status)
+    VALUES 
+        (%(interview_id)s, 'SCHEDULED')
+    """
+    await cur.execute(insert_status_query, {"interview_id": interview_id})
+
+    return {
+        "message": "User processed and interview generated",
+        "user_id": user_id,
+        "interview_id": interview_id,
+    }

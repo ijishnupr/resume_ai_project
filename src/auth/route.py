@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends
 from src.auth.model import (
     ExchangeRequest,
     LoginRequest,
-    PatchUserRequest,
     ResetPasswordRequest,
+    UserInfoRequest,
 )
-from src.auth.service import request_reset_password, reset_password, user_login, exchange
+from src.auth.service import process_user_info, request_reset_password, reset_password, user_login, exchange
 from src.shared.db import get_connection
 
 # only use this auth for admin
@@ -26,8 +26,8 @@ async def exchange_route(request: ExchangeRequest, db=Depends(get_connection)):
 
 
 @route.post("/userinfo")
-async def userinfo_route(request: PatchUserRequest, db=Depends(get_connection)):
-    return {"message": "User info endpoint"}
+async def userinfo_route(request: UserInfoRequest, db=Depends(get_connection)):
+    return await process_user_info(request, db)
 
 
 @route.get("/{user_code}/reset-password")
@@ -40,3 +40,4 @@ async def reset_password_route(
     request: ResetPasswordRequest, db=Depends(get_connection)
 ):
     return await reset_password(request.reset_token, request.new_password, db)
+
