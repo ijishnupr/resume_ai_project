@@ -117,18 +117,20 @@ async def process_user_info(request: UserV1Request, db):
 
 async def process_password_reset(request: PasswordResetRequest, user_id: int, db):
     conn, cur = db
-
+    ph = PasswordHasher()
+   
+    encoded_password: str = ph.hash(request.new_password)
     insert_into_app_user_query = """
     UPDATE
         app_user
     SET
         password = %(new_password)s, is_reset_password = TRUE
     WHERE
-        user_id = %(user_id)s
+        id = %(user_id)s
     """
     await cur.execute(
         insert_into_app_user_query,
-        {"new_password": request.new_password, "user_id": user_id},
+        {"new_password": encoded_password, "user_id": user_id},
     )
     return {
         "message": "Password reset processed",

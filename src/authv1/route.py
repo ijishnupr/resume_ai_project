@@ -37,7 +37,7 @@ async def reset_password_route(
         if not user_id:
             raise Exception("Token payload invalid")
 
-        return await process_password_reset(request, user_id, db)
+        
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -49,3 +49,4 @@ async def reset_password_route(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid reset token",
         )
+    return await process_password_reset(request, user_id, db)
