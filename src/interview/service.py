@@ -116,7 +116,7 @@ async def list_interview(user: UserPayload, db):
 
     get_interview_query = """
     SELECT
-        i.created_at,ins.status,jr.name as job_name
+        i.created_at,ins.status,jr.name as title,'Ylogx' as company_name,i.id
     FROM
         interview i
     JOIN
@@ -128,4 +128,4 @@ async def list_interview(user: UserPayload, db):
     await cur.execute(get_interview_query, {"user_id": user.user_id})
     interviews = await cur.fetchall()
 
-    return {"interviews": interviews}
+    return interviews
