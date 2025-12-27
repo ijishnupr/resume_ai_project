@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request
 
-from src.interview.model import UserV1Request
+from src.interview.model import ConversationRequest, UserV1Request
 from src.interview.service import (
+    insert_conversation,
     interview_route,
     list_interview,
     process_user_info,
@@ -38,3 +39,10 @@ async def start_interview_route(
     interview_id: int, request: Request, db=Depends(get_connection)
 ):
     return await start_interview(interview_id, request.state.user, db)
+
+
+@route.post("/{interview_id}/conversation")
+async def insert_conversation_route(
+    interview_id: int, request: ConversationRequest, db=Depends(get_connection)
+):
+    return await insert_conversation(interview_id, request.conversation, db)

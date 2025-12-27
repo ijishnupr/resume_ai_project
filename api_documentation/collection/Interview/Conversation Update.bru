@@ -1,0 +1,21 @@
+meta {
+  name: Conversation Update
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{url}}/api/interview/1/conversation
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "conversation":"this is the first message"
+  }
+}

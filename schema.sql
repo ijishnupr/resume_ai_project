@@ -66,7 +66,6 @@ CREATE TYPE interview_status_enum AS ENUM (
 );
 
 
-
 CREATE TABLE interview_status (
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
@@ -91,18 +90,19 @@ CREATE TABLE interview_violation (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE interview_question(
+CREATE TABLE interview_conversation(
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
     transcript_data TEXT,
-    question VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE interview_answer(
+ALTER TABLE interview_candidate
+
+CREATE TABLE interview_conversation_history(
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
-    question_id INTEGER REFERENCES interview_question(id) ON DELETE CASCADE,
+    question_id INTEGER REFERENCES interview_conversation(id) ON DELETE CASCADE,
     answer TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -125,20 +125,4 @@ CREATE TABLE resume_detail(
     candidate_user_id INTEGER REFERENCES candidate_user(id) ON DELETE CASCADE,
     resume_data VARCHAR(400),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-
-
-CREATE TABLE question(
-    id SERIAL PRIMARY KEY,
-    question VARCHAR(500) NOT NULL,
-    is_mandatory BOOLEAN DEFAULT FALSE,
-    preferred_answer VARCHAR(500),
-    sequence_no int NOT NULL
-);
-
-CREATE TABLE answers(
-    id SERIAL PRIMARY KEY,
-    answer VARCHAR(500),
-    question_id INTEGER REFERENCES question(id) ON DELETE CASCADE
 );

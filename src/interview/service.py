@@ -240,3 +240,35 @@ async def start_interview(interview_id: int, user: UserPayload, db):
     await cur.execute(insert_interview_status, {"interview_id": interview_id})
 
     return token["client_secret"]
+
+
+async def insert_conversation(interview_id, conversation, db):
+    conn, cur = db
+    check_interview_available_query = """
+    SELECT
+        id
+    FROM
+        interview
+    WHERE
+        id = %(interview_id)s
+    """
+    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
+    interview = await cur.fetchone()
+    if not interview:
+        if not interview:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"message": "Interview Not Found"},
+            )
+    insert_into_interview_conversation_query = """
+    INSERT INTO
+        interview_conversation
+        (interview_id,transcript_data)
+    VALUES
+        (%(interview_id)s,%(transcript_data)s)
+    """
+    await cur.execute(
+        insert_into_interview_conversation_query,
+        {"interview_id": interview_id, "transcript_data": conversation},
+    )
+    return {"message": "Conversation Updated"}
