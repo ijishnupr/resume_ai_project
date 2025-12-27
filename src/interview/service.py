@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from src.interview.model import UserV1Request
+from src.interview.prompts import InstructionType, get_base_instructions
 from src.shared.dependency import UserPayload
 
 load_dotenv()
@@ -167,6 +168,7 @@ async def interview_route(interview_id: int, user: UserPayload, db):
 
 async def get_ephemeral_token():
     async with httpx.AsyncClient() as client:
+        instructions = get_base_instructions(InstructionType("PRESCREENING"))
         response = await client.post(
             "https://api.openai.com/v1/realtime/sessions",
             headers={
@@ -176,6 +178,7 @@ async def get_ephemeral_token():
             json={
                 "model": "gpt-4o-realtime-preview-2024-12-17",
                 "voice": "alloy",
+                "instructions": instructions,
             },
         )
 
@@ -188,10 +191,52 @@ async def get_ephemeral_token():
 
 
 async def start_interview(interview_id: int, user: UserPayload, db):
-    token = await get_ephemeral_token()
-    return token
-    print(token)
     conn, cur = db
-    # get ephemeral_token
-    # insert token
-    # update status
+    check_interview_available_query = """
+    SELECT
+        id
+    FROM
+        interview
+    WHERE
+        id = %(interview_id)s and ephemeral_token is null
+    """
+    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
+    interview = await cur.fetchone()
+    if not interview:
+        return {"message": "Token Already generated"}
+    token = await get_ephemeral_token()
+    ephemeral_token = token["client_secret"]["value"]
+    insert_into_interview_query = """
+    UPDATE
+        interview
+    SET
+     ephemeral_token = %(ephemeral_token)s
+    WHERE
+        id = %(interview_id)s
+    """
+
+    await cur.execute(
+        insert_into_interview_query,
+        {"ephemeral_token": ephemeral_token, "interview_id": interview_id},
+    )
+
+    update_interview_status_query = """
+    UPDATE
+        interview_status
+    SET
+        end_time = now()
+    WHERE
+        interview_id = %(interview_id)s and end_time = '2100-01-01 00:00:00+00'
+    """
+    await cur.execute(update_interview_status_query, {"interview_id": interview_id})
+    insert_interview_status = """
+    INSERT INTO
+        interview_status
+        (interview_id,status)
+    VALUES
+        (%(interview_id)s,'ACTIVE')
+
+    """
+    await cur.execute(insert_interview_status, {"interview_id": interview_id})
+
+    return token["client_secret"]
