@@ -116,9 +116,13 @@ async def list_interview(user: UserPayload, db):
 
     get_interview_query = """
     SELECT
-        id, user_id, created_at, last_date::date
+        i.created_at,ins.status,jr.name as job_name
     FROM
-        interview
+        interview i
+    JOIN
+        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00'
+    JOIN
+        job_requisition jr ON jr.id = i.job_requisition_id
     WHERE user_id = %(user_id)s
     """
     await cur.execute(get_interview_query, {"user_id": user.user_id})

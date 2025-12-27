@@ -12,7 +12,6 @@ JWT_SECRET: str = os.getenv("JWT_SECRET", "")
 
 
 class UserPayload(BaseModel):
-    user_code: str
     user_id: int
 
 

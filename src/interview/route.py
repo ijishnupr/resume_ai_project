@@ -18,4 +18,4 @@ async def userinfo_route(
 
 @route.get("/", dependencies=PROTECTED)
 async def interview_list_route(request: Request, db=Depends(get_connection)):
-    return list_interview(request.state.user, db)
+    return await list_interview(request.state.user, db)

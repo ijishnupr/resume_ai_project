@@ -38,10 +38,12 @@ CREATE TABLE interview (
 
 
 ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS job_requisition_id VARCHAR(100);
+ADD COLUMN IF NOT EXISTS job_requisition_id INT;
 
 ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS resume_id VARCHAR(100) ;
+ADD COLUMN IF NOT EXISTS resume_id INT ;
+
+
 
 ALTER TABLE interview
 ADD CONSTRAINT uq_interview_user_resume

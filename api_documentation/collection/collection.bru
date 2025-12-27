@@ -9,8 +9,8 @@ script:post-response {
     const baseUrl = bru.getEnvVar("url");
     try {
       const loginResult = await axios.post(`${baseUrl}/api/auth/login`, {
-        username: "email",
-        password: "password",
+        username: "test@gmail.com",
+        password: "jishnu",
       });
       const { refresh_token } = loginResult.data;
 
