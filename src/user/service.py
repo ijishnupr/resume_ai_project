@@ -11,7 +11,7 @@ async def me(user: UserPayload, db):
         email
     FROM
         interview_candidate
-    WEHRE
+    WHERE
         id = %(interview_candidate_id)s
     """
     await cur.execute(get_user_info_query, {"interview_candidate_id": user.user_id})

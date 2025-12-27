@@ -8,4 +8,4 @@ router = APIRouter()
 
 router.include_router(auth_route, prefix="/auth")
 router.include_router(interview_route, prefix="/interview")
-router.include_router(user_route, prefix="/me")
+router.include_router(user_route, prefix="/user")

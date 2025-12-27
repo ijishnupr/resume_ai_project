@@ -1,0 +1,15 @@
+meta {
+  name: User Detail
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/api/user/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

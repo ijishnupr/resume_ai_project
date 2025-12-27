@@ -8,6 +8,6 @@ route = APIRouter()
 PROTECTED = [Depends(has_access)]
 
 
-@route.get("/", dependencies=PROTECTED)
+@route.get("/me", dependencies=PROTECTED)
 async def me_route(request: Request, db=Depends(get_connection)):
     return await me(request.state.user, db)
