@@ -116,7 +116,7 @@ async def list_interview(user: UserPayload, db):
 
     get_interview_query = """
     SELECT
-        i.created_at,ins.status,jr.name as title,'Ylogx' as company_name,i.id
+        i.created_at,ins.status,jr.name as title,'Ylogx' as company_name,i.id,'PRESCREENING' as interview_type
     FROM
         interview i
     JOIN
