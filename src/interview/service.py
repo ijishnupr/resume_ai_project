@@ -332,3 +332,44 @@ async def update_interview_status(interview_id: int, interview_status: str, db):
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"message": "Session Is Already COMPLETED"},
         )
+
+
+async def get_conversation(interview_id: int, db):
+    conn, cur = db
+    check_interview_available_query = """
+    SELECT
+        i.id
+    FROM
+        interview i
+    WHERE
+        i.id = %(interview_id)s
+    """
+    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
+    interview = await cur.fetchone()
+    if not interview:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"message": "Interview Not Found"},
+        )
+
+    get_conversation_query = """
+    SELECT
+        transcript_data,
+        type,
+        created_at,
+        id as conversation_id
+    FROM
+        interview_conversation
+    WHERE
+        interview_id = %(interview_id)s
+    ORDER BY
+        created_at ASC
+    """
+
+    await cur.execute(get_conversation_query, {"interview_id": interview_id})
+    conversations = await cur.fetchall()
+
+    return {
+        "interview_id": interview_id,
+        "conversations": conversations,
+    }

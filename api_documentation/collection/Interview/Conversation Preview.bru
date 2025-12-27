@@ -1,0 +1,15 @@
+meta {
+  name: Conversation Preview
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{url}}/api/interview/4/conversation
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
