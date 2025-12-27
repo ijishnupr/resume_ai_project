@@ -356,7 +356,7 @@ async def get_conversation(interview_id: int, db):
     SELECT
         ic.id AS conversation_id,
         ic.transcript_data,
-        ic.type,
+        ic.type as source,
         ic.created_at,
         COALESCE(
             json_agg(
@@ -383,7 +383,4 @@ async def get_conversation(interview_id: int, db):
     await cur.execute(get_conversation_query, {"interview_id": interview_id})
     conversations = await cur.fetchall()
 
-    return {
-        "interview_id": interview_id,
-        "conversations": conversations,
-    }
+    return (conversations,)

@@ -98,7 +98,7 @@ CREATE TABLE interview_conversation(
 );
 
 ALTER TABLE interview_conversation
-ADD COLUMN type TEXT;
+ADD COLUMN source TEXT;
 
 CREATE TABLE interview_conversation_history(
     id SERIAL PRIMARY KEY,
