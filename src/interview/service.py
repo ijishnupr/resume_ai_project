@@ -148,7 +148,7 @@ async def interview_route(interview_id: int, user: UserPayload, db):
     WHERE i.id = %(interview_id)s
     """
     await cur.execute(get_interview_query, {"interview_id": interview_id})
-    interview = await cur.fetchall()
+    interview = await cur.fetchone()
     if not interview:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
