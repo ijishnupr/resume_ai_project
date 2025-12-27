@@ -44,10 +44,16 @@ ALTER TABLE interview
 ADD COLUMN IF NOT EXISTS resume_id INT ;
 
 
-
 ALTER TABLE interview
 ADD CONSTRAINT uq_interview_user_resume
 UNIQUE (user_id, resume_id);
+
+ALTER TABLE interview
+ADD COLUMN ephemeral_token VARCHAR(500);
+
+ALTER TABLE interview
+ADD CONSTRAINT uq_interview_ephimeral_token
+UNIQUE (id, ephemeral_token);
 
 
 

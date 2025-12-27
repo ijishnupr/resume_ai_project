@@ -1,9 +1,16 @@
+import os
+
+import httpx
 from argon2 import PasswordHasher
-from fastapi import status
+from dotenv import load_dotenv
+from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from src.interview.model import UserV1Request
 from src.shared.dependency import UserPayload
+
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 async def process_user_info(job_requisition_id: int, request: UserV1Request, db):
@@ -156,3 +163,35 @@ async def interview_route(interview_id: int, user: UserPayload, db):
         )
 
     return interview
+
+
+async def get_ephemeral_token():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.openai.com/v1/realtime/sessions",
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gpt-4o-realtime-preview-2024-12-17",
+                "voice": "alloy",
+            },
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code, detail="Failed to create session"
+            )
+
+        return response.json()
+
+
+async def start_interview(interview_id: int, user: UserPayload, db):
+    token = await get_ephemeral_token()
+    return token
+    print(token)
+    conn, cur = db
+    # get ephemeral_token
+    # insert token
+    # update status
