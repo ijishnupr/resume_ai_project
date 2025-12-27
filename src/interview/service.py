@@ -1,4 +1,6 @@
 from argon2 import PasswordHasher
+from fastapi import status
+from fastapi.responses import JSONResponse
 
 from src.interview.model import UserV1Request
 from src.shared.dependency import UserPayload
@@ -129,3 +131,28 @@ async def list_interview(user: UserPayload, db):
     interviews = await cur.fetchall()
 
     return interviews
+
+
+async def interview_route(interview_id: int, user: UserPayload, db):
+    conn, cur = db
+
+    get_interview_query = """
+    SELECT
+        i.created_at,ins.status,jr.name as title,'Ylogx' as company_name,i.id,'PRESCREENING' as interview_type
+    FROM
+        interview i
+    JOIN
+        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00'
+    JOIN
+        job_requisition jr ON jr.id = i.job_requisition_id
+    WHERE i.id = %(interview_id)s
+    """
+    await cur.execute(get_interview_query, {"interview_id": interview_id})
+    interview = await cur.fetchall()
+    if not interview:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"message": "Interview Not Found"},
+        )
+
+    return interview

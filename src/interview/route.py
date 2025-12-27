@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 
 from src.interview.model import UserV1Request
-from src.interview.service import list_interview, process_user_info
+from src.interview.service import interview_route, list_interview, process_user_info
 from src.shared.db import get_connection
 from src.shared.dependency import has_access
 
@@ -19,3 +19,10 @@ async def userinfo_route(
 @route.get("/", dependencies=PROTECTED)
 async def interview_list_route(request: Request, db=Depends(get_connection)):
     return await list_interview(request.state.user, db)
+
+
+@route.get("/{interview_id}", dependencies=PROTECTED)
+async def interview_detail_route(
+    interview_id: int, request: Request, db=Depends(get_connection)
+):
+    return await interview_route(interview_id, request.state.user, db)
