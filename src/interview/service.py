@@ -354,16 +354,30 @@ async def get_conversation(interview_id: int, db):
 
     get_conversation_query = """
     SELECT
-        transcript_data,
-        type,
-        created_at,
-        id as conversation_id
+        ic.id AS conversation_id,
+        ic.transcript_data,
+        ic.type,
+        ic.created_at,
+        COALESCE(
+            json_agg(
+                json_build_object(
+                    'conversation', ich.conversation,
+                    'created_at', ich.created_at
+                )
+            ) FILTER (WHERE ich.id IS NOT NULL),
+            '[]'
+        ) AS edited_field
     FROM
-        interview_conversation
+        interview_conversation ic
+    LEFT JOIN
+        interview_conversation_history ich
+        ON ich.interview_conversation_id = ic.id
     WHERE
-        interview_id = %(interview_id)s
+        ic.interview_id = %(interview_id)s
+    GROUP BY
+        ic.id
     ORDER BY
-        created_at ASC
+        ic.created_at ASC
     """
 
     await cur.execute(get_conversation_query, {"interview_id": interview_id})
