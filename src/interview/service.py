@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
-from src.interview.model import UserV1Request
+from src.interview.model import ConversationRequest, UserV1Request
 from src.interview.prompts import InstructionType, get_base_instructions
 from src.shared.dependency import UserPayload
 
@@ -242,7 +242,7 @@ async def start_interview(interview_id: int, user: UserPayload, db):
     return token["client_secret"]
 
 
-async def insert_conversation(interview_id, conversation, db):
+async def insert_conversation(interview_id, request: ConversationRequest, db):
     conn, cur = db
     check_interview_available_query = """
     SELECT
@@ -263,12 +263,16 @@ async def insert_conversation(interview_id, conversation, db):
     insert_into_interview_conversation_query = """
     INSERT INTO
         interview_conversation
-        (interview_id,transcript_data)
+        (interview_id,transcript_data,type)
     VALUES
-        (%(interview_id)s,%(transcript_data)s)
+        (%(interview_id)s,%(transcript_data)s,%(type)s)
     """
     await cur.execute(
         insert_into_interview_conversation_query,
-        {"interview_id": interview_id, "transcript_data": conversation},
+        {
+            "interview_id": interview_id,
+            "transcript_data": request.conversation,
+            "type": request.source,
+        },
     )
     return {"message": "Conversation Updated"}

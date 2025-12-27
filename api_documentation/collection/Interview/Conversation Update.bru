@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{url}}/api/interview/1/conversation
+  url: {{url}}/api/interview/4/conversation
   body: json
   auth: bearer
 }
@@ -16,6 +16,7 @@ auth:bearer {
 
 body:json {
   {
-    "conversation":"this is the first message"
+    "conversation":"this is the second message",
+    "source":"AI"
   }
 }

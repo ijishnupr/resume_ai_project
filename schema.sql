@@ -97,7 +97,8 @@ CREATE TABLE interview_conversation(
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE interview_candidate
+ALTER TABLE interview_conversation
+ADD COLUMN type TEXT;
 
 CREATE TABLE interview_conversation_history(
     id SERIAL PRIMARY KEY,

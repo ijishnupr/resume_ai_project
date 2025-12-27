@@ -45,4 +45,4 @@ async def start_interview_route(
 async def insert_conversation_route(
     interview_id: int, request: ConversationRequest, db=Depends(get_connection)
 ):
-    return await insert_conversation(interview_id, request.conversation, db)
+    return await insert_conversation(interview_id, request, db)
