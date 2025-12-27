@@ -1,0 +1,15 @@
+meta {
+  name: Complete Interview
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{url}}/api/interview/4/completed
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

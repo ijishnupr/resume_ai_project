@@ -255,11 +255,10 @@ async def insert_conversation(interview_id, request: ConversationRequest, db):
     await cur.execute(check_interview_available_query, {"interview_id": interview_id})
     interview = await cur.fetchone()
     if not interview:
-        if not interview:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={"message": "Interview Not Found"},
-            )
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"message": "Interview Not Found"},
+        )
     insert_into_interview_conversation_query = """
     INSERT INTO
         interview_conversation
@@ -276,3 +275,60 @@ async def insert_conversation(interview_id, request: ConversationRequest, db):
         },
     )
     return {"message": "Conversation Updated"}
+
+
+async def update_interview_status(interview_id: int, interview_status: str, db):
+    conn, cur = db
+    check_interview_available_query = """
+    SELECT
+        i.id,ins.status
+    FROM
+        interview i
+    JOIN
+        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00'
+    WHERE
+        i.id = %(interview_id)s
+    """
+    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
+    interview = await cur.fetchone()
+    if not interview:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"message": "Interview Not Found"},
+        )
+    previous_status = interview["status"]
+    if previous_status == "ACTIVE":
+        update_interview_status_query = """
+        UPDATE
+            interview_status
+        SET
+            end_time = now()
+        WHERE
+            interview_id = %(interview_id)s and end_time = '2100-01-01 00:00:00+00'
+        """
+        await cur.execute(update_interview_status_query, {"interview_id": interview_id})
+        insert_interview_status = """
+        INSERT INTO
+            interview_status
+            (interview_id,status)
+        VALUES
+            (%(interview_id)s,%(status)s)
+
+        """
+        await cur.execute(
+            insert_interview_status,
+            {"interview_id": interview_id, "status": interview_status},
+        )
+
+        return {"message": "Interview Status Updated"}
+
+    elif previous_status == "CLOSED":
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"message": "Session Is Already Closed"},
+        )
+    else:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"message": "Session Is Already COMPLETED"},
+        )

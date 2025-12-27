@@ -7,6 +7,7 @@ from src.interview.service import (
     list_interview,
     process_user_info,
     start_interview,
+    update_interview_status,
 )
 from src.shared.db import get_connection
 from src.shared.dependency import has_access
@@ -41,8 +42,24 @@ async def start_interview_route(
     return await start_interview(interview_id, request.state.user, db)
 
 
-@route.post("/{interview_id}/conversation")
+@route.post("/{interview_id}/conversation", dependencies=PROTECTED)
 async def insert_conversation_route(
-    interview_id: int, request: ConversationRequest, db=Depends(get_connection)
+    interview_id: int,
+    request: ConversationRequest,
+    db=Depends(
+        get_connection,
+    ),
 ):
     return await insert_conversation(interview_id, request, db)
+
+
+@route.post("/{interview_id}/close", dependencies=PROTECTED)
+async def update_interview_status_route(interview_id: int, db=Depends(get_connection)):
+    return await update_interview_status(interview_id, "SESSION_CLOSED", db)
+
+
+@route.post("/{interview_id}/completed", dependencies=PROTECTED)
+async def update_interview_status_complete_route(
+    interview_id: int, db=Depends(get_connection)
+):
+    return await update_interview_status(interview_id, "COMPLETED", db)
