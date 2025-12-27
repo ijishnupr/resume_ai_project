@@ -1,0 +1,21 @@
+meta {
+  name: Edit Interview Conversation
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{url}}/api/interview/conversation/3
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "conversation":"this is an edited answer"
+  }
+}

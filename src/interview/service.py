@@ -383,4 +383,45 @@ async def get_conversation(interview_id: int, db):
     await cur.execute(get_conversation_query, {"interview_id": interview_id})
     conversations = await cur.fetchall()
 
-    return (conversations,)
+    return {"conversations": conversations}
+
+
+async def edit_conversation(conversation_id: int, conversation: str, db):
+    conn, cur = db
+    check_conversation_exist_query = """
+    SELECT
+        ic.id
+    FROM
+        interview_conversation ic
+    JOIN
+        interview i ON i.id = ic.interview_id
+    JOIN
+        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00' AND status not in ('COMPLETED','SCHEDULED')
+    WHERE
+        ic.id = %(conversation_id)s
+    """
+    await cur.execute(
+        check_conversation_exist_query, {"conversation_id": conversation_id}
+    )
+    conversation_data = await cur.fetchone()
+    if conversation_data:
+        insert_into_conversation_history_query = """
+        INSERT INTO
+            interview_conversation_history
+        (interview_conversation_id,conversation)
+        VALUES
+            (%(interview_conversation_id)s,%(conversation)s)
+        """
+        await cur.execute(
+            insert_into_conversation_history_query,
+            {
+                "conversation": conversation,
+                "interview_conversation_id": conversation_id,
+            },
+        )
+        return {"message": "Conversation Updated"}
+    else:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"message": "Conversation Not Found Or Completed"},
+        )

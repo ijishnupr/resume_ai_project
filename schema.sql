@@ -102,7 +102,6 @@ ADD COLUMN source TEXT;
 
 CREATE TABLE interview_conversation_history(
     id SERIAL PRIMARY KEY,
-    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
     interview_conversation_id INTEGER REFERENCES interview_conversation(id) ON DELETE CASCADE,
     conversation TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

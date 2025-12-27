@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Request
 
-from src.interview.model import ConversationRequest, UserV1Request
+from src.interview.model import (
+    ConversationRequest,
+    EditConversationRequest,
+    UserV1Request,
+)
 from src.interview.service import (
+    edit_conversation,
     get_conversation,
     insert_conversation,
     interview_route,
@@ -69,3 +74,10 @@ async def update_interview_status_complete_route(
 @route.get("/{interview_id}/conversation", dependencies=PROTECTED)
 async def get_conversation_route(interview_id: int, db=Depends(get_connection)):
     return await get_conversation(interview_id, db)
+
+
+@route.post("/conversation/{conversation_id}", dependencies=PROTECTED)
+async def edit_conversation_route(
+    conversation_id: int, request: EditConversationRequest, db=Depends(get_connection)
+):
+    return await edit_conversation(conversation_id, request.conversation, db)

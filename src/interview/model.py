@@ -10,3 +10,7 @@ class UserV1Request(BaseModel):
 class ConversationRequest(BaseModel):
     conversation: str
     source: Literal["AI", "USER"]
+
+
+class EditConversationRequest(BaseModel):
+    conversation: str
