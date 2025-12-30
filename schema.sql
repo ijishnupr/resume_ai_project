@@ -1,5 +1,6 @@
-CREATE TABLE interview_candidate (
+CREATE TABLE candidate_user (
     id SERIAL PRIMARY KEY,
+    name VARCHAR(225),
     password TEXT ,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
