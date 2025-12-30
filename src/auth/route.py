@@ -17,7 +17,6 @@ from src.auth.service import (
 )
 from src.shared.db import get_connection
 
-# only use this auth for admin
 route = APIRouter()
 
 
