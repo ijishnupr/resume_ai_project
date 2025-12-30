@@ -27,7 +27,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
     SELECT
         id
     FROM
-        interview_candidate
+        candidate_user
     WHERE
         id = %(user_id)s and is_reset_password = FALSE
     """
@@ -37,7 +37,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
         return {"Password is already changed"}
     insert_into_interview_candidate_query = """
     UPDATE
-        interview_candidate
+        candidate_user
     SET
         password = %(new_password)s, is_reset_password = TRUE
     WHERE
@@ -61,7 +61,7 @@ async def user_login(client_req: Request, request: LoginRequest, db):
         id as user_id,
         is_reset_password
     FROM
-        interview_candidate
+        candidate_user
     WHERE
         email = %(email)s
     """
@@ -93,9 +93,9 @@ async def user_login(client_req: Request, request: LoginRequest, db):
     }
     insert_session_query = """
     INSERT INTO user_session
-        (user_id, refresh_token, ip_address, user_agent, metadata)
+        (user_id, refresh_token)
     VALUES
-        (%(user_id)s, %(token)s, %(ip)s, %(ua)s, %(meta)s)
+        (%(user_id)s, %(token)s)
     """
     await cur.execute(
         insert_session_query,
