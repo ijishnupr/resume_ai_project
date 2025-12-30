@@ -12,8 +12,6 @@ CREATE TABLE candidate_user (
 
 
 
-
-
 CREATE TABLE interview_violation (
     id SERIAL PRIMARY KEY,
     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
@@ -33,18 +31,6 @@ CREATE TABLE interview_violation (
 -- Enable extension for UUID generation
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-----------------------------------------------------------
--- TABLE: candidate_user
-----------------------------------------------------------
-CREATE TABLE candidate_user (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT,
-    email TEXT UNIQUE,
-    url TEXT,
-    username TEXT UNIQUE,
-    password TEXT,
-    validity TIMESTAMP
-);
 
 ----------------------------------------------------------
 -- TABLE: job_requisition
@@ -238,3 +224,75 @@ CREATE TABLE interview_credits (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+----------------------------------------------------------
+-- FOREIGN KEY CONSTRAINTS
+----------------------------------------------------------
+
+-- resume_detail > candidate_user (Linked by ID implies 1:1 or Resume belongs to Candidate)
+-- Note: resume_detail.id is used as FK here based on 'Ref: resume_detail.id > candidate_user.id'
+ALTER TABLE resume_detail
+ADD CONSTRAINT fk_resume_candidate_user
+FOREIGN KEY (id) REFERENCES candidate_user(id);
+
+-- job_requisition > job_description
+-- (Note: Not explicitly defined in 'Ref' section but implied by column name. Added for safety)
+ALTER TABLE job_requisition
+ADD CONSTRAINT fk_job_req_description
+FOREIGN KEY (job_description_id) REFERENCES job_description(id);
+
+-- candidate_question_prescreen_response > candidate_question_prescreening
+ALTER TABLE candidate_question_prescreen_response
+ADD CONSTRAINT fk_prescreen_resp_question
+FOREIGN KEY (question_id) REFERENCES candidate_question_prescreening(id);
+
+-- candidate_question_prescreen_response > resume_detail
+ALTER TABLE candidate_question_prescreen_response
+ADD CONSTRAINT fk_prescreen_resp_resume
+FOREIGN KEY (resume_detail_id) REFERENCES resume_detail(id);
+
+-- candidate_question_prescreen_response > candidate_interview_question_session
+ALTER TABLE candidate_question_prescreen_response
+ADD CONSTRAINT fk_prescreen_resp_session
+FOREIGN KEY (interview_session_id) REFERENCES candidate_interview_question_session(id);
+
+-- candidate_interview_question_session > resume_detail
+ALTER TABLE candidate_interview_question_session
+ADD CONSTRAINT fk_session_resume
+FOREIGN KEY (resume_detail_id) REFERENCES resume_detail(id);
+
+-- candidate_interview_question_session > job_description
+ALTER TABLE candidate_interview_question_session
+ADD CONSTRAINT fk_session_job_description
+FOREIGN KEY (job_description_id) REFERENCES job_description(id);
+
+-- candidate_interview_question_session > job_requisition (from Ref list)
+ALTER TABLE candidate_interview_question_session
+ADD CONSTRAINT fk_session_job_req
+FOREIGN KEY (job_requisition_id) REFERENCES job_requisition(id);
+
+-- candidate_ai_interview_evaluation > candidate_interview_question_session
+ALTER TABLE candidate_ai_interview_evaluation
+ADD CONSTRAINT fk_evaluation_session
+FOREIGN KEY (interview_session_id) REFERENCES candidate_interview_question_session(id);
+
+-- candidate_ai_interview_evaluation > candidate_user
+ALTER TABLE candidate_ai_interview_evaluation
+ADD CONSTRAINT fk_evaluation_candidate
+FOREIGN KEY (candidate_id) REFERENCES candidate_user(id);
+
+-- candidate_question_prescreening > job_description
+-- Note: Column name is jod_description_id (typo preserved)
+ALTER TABLE candidate_question_prescreening
+ADD CONSTRAINT fk_prescreening_job_description
+FOREIGN KEY (jod_description_id) REFERENCES job_description(id);
+
+-- candidate_question_prescreening > job_requisition
+ALTER TABLE candidate_question_prescreening
+ADD CONSTRAINT fk_prescreening_job_req
+FOREIGN KEY (job_requisition_id) REFERENCES job_requisition(id);
+
+-- candidate_technical_L1_question > job_requisition
+ALTER TABLE candidate_technical_L1_question
+ADD CONSTRAINT fk_tech_l1_job_req
+FOREIGN KEY (job_requisition_id) REFERENCES job_requisition(id);
