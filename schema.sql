@@ -3,57 +3,11 @@ CREATE TABLE interview_candidate (
     password TEXT ,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    email VARCHAR(255) UNIQUE,
+    is_reset_password BOOLEAN DEFAULT FALSE
 );
 
-ALTER TABLE interview_candidate
-ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE;
-
-ALTER TABLE interview_candidate
-ADD COLUMN IF NOT EXISTS is_reset_password BOOLEAN DEFAULT FALSE;
-
-
-CREATE TABLE user_session (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES interview_candidate(id) ON DELETE CASCADE,
-    refresh_token TEXT UNIQUE NOT NULL,
-    ip_address INET,
-    user_agent TEXT,
-    metadata JSONB,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-
-
-CREATE TABLE interview (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES interview_candidate(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_date TIMESTAMP WITH TIME ZONE
-
-);
-
-
-
-ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS job_requisition_id INT;
-
-ALTER TABLE interview
-ADD COLUMN IF NOT EXISTS resume_id INT ;
-
-
-ALTER TABLE interview
-ADD CONSTRAINT uq_interview_user_resume
-UNIQUE (user_id, resume_id);
-
-ALTER TABLE interview
-ADD COLUMN ephemeral_token VARCHAR(500);
-
-ALTER TABLE interview
-ADD CONSTRAINT uq_interview_ephimeral_token
-UNIQUE (id, ephemeral_token);
 
 
 
@@ -68,35 +22,9 @@ CREATE TABLE interview_violation (
 );
 
 
-ALTER TABLE interview_conversation
-ADD COLUMN source TEXT;
-
-CREATE TABLE interview_conversation_history(
-    id SERIAL PRIMARY KEY,
-    interview_conversation_id INTEGER REFERENCES interview_conversation(id) ON DELETE CASCADE,
-    conversation TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
 
-CREATE TABLE candidate_user(
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(50) UNIQUE
 
-);
-
-CREATE TABLE job_requisition (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(500)
-
-);
-
-CREATE TABLE resume_detail(
-    id SERIAL PRIMARY KEY,
-    candidate_user_id INTEGER REFERENCES candidate_user(id) ON DELETE CASCADE,
-    resume_data VARCHAR(400),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
 
 -- prod db schema
