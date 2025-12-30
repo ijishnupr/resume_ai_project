@@ -21,7 +21,7 @@ route = APIRouter()
 
 
 load_dotenv()
-JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
+JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET", "")
 
 
 @route.post("/reset-password")

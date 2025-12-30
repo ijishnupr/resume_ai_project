@@ -1,5 +1,5 @@
 CREATE TABLE candidate_user (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(225),
     password TEXT ,
     is_active BOOLEAN DEFAULT TRUE,
@@ -12,13 +12,13 @@ CREATE TABLE candidate_user (
 
 
 
-CREATE TABLE interview_violation (
-    id SERIAL PRIMARY KEY,
-    interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
-    violation_type VARCHAR(100) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+-- CREATE TABLE interview_violation (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
+--     violation_type VARCHAR(100) NOT NULL,
+--     description TEXT,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- );
 
 
 

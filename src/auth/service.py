@@ -15,7 +15,7 @@ from src.auth.model import (
 
 load_dotenv()
 JWT_SECRET: str = os.getenv("JWT_SECRET", "")
-JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET_EMAIL", "")
+JWT_SECRET_EMAIL: str = os.getenv("JWT_SECRET", "")
 
 
 async def process_password_reset(request: PasswordResetRequest, user_id: int, db):
