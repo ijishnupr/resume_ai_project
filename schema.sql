@@ -21,6 +21,17 @@ CREATE TABLE candidate_user (
 -- );
 
 
+CREATE TABLE candidate_user_session (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    candidate_user_id UUID NOT NULL REFERENCES candidate_user(id) ON DELETE CASCADE,
+    refresh_token TEXT NOT NULL,
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    metadata JSONB,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 
 

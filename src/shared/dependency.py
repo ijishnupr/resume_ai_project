@@ -1,3 +1,4 @@
+from uuid import UUID
 import os
 
 import jwt
@@ -12,7 +13,7 @@ JWT_SECRET: str = os.getenv("JWT_SECRET", "")
 
 
 class UserPayload(BaseModel):
-    user_id: int
+    user_id: UUID
 
 
 async def has_access(

@@ -27,7 +27,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
     SELECT
         id
     FROM
-        candidate_user
+        interview_candidate
     WHERE
         id = %(user_id)s and is_reset_password = FALSE
     """
@@ -37,7 +37,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
         return {"Password is already changed"}
     insert_into_interview_candidate_query = """
     UPDATE
-        candidate_user
+        interview_candidate
     SET
         password = %(new_password)s, is_reset_password = TRUE
     WHERE
@@ -92,10 +92,10 @@ async def user_login(client_req: Request, request: LoginRequest, db):
         "platform": client_req.headers.get("sec-ch-ua-platform", "unknown"),
     }
     insert_session_query = """
-    INSERT INTO user_session
-        (user_id, refresh_token)
+    INSERT INTO candidate_user_session
+        (candidate_user_id, refresh_token, ip_address, user_agent, metadata)
     VALUES
-        (%(user_id)s, %(token)s)
+        (%(user_id)s, %(token)s, %(ip)s, %(ua)s, %(meta)s)
     """
     await cur.execute(
         insert_session_query,
@@ -118,9 +118,9 @@ async def exchange(refresh_token: str, db):
     conn, cur = db
     get_token_query = """
     SELECT
-        ut.user_id
+        ut.candidate_user_id as user_id
     FROM
-        user_session ut
+        candidate_user_session ut
 
     WHERE
         ut.refresh_token = %(token)s
@@ -129,7 +129,7 @@ async def exchange(refresh_token: str, db):
     token_record = await cur.fetchone()
     if not token_record:
         return {"error": "Invalid refresh token"}
-    data = {"user_id": token_record["user_id"]}
+    data = {"user_id": str(token_record["user_id"])}
 
     encoded_jwt = jwt.encode(data, JWT_SECRET, algorithm="HS256")
     return {"access_token": encoded_jwt}
