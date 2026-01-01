@@ -126,34 +126,47 @@ async def list_interview(user: UserPayload, db):
 
     get_interview_query = """
     SELECT
-        i.created_at,ins.status,jr.name as title,'Ylogx' as company_name,i.id,'PRESCREENING' as interview_type
+        ciqs.created_at,
+        ciqs.status,
+        jd.job_title AS title,
+        'Ylogx' AS company_name,
+        ciqs.id,
+        UPPER(ciqs.interview_mode) AS interview_type
     FROM
-        interview i
+        candidate_interview_question_session ciqs
     JOIN
-        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00'
+        job_requisition jr ON ciqs.job_requisition_id = jr.id
     JOIN
-        job_requisition jr ON jr.id = i.job_requisition_id
-    WHERE user_id = %(user_id)s
+        job_description jd ON jr.job_description_id = jd.id
+    WHERE
+        ciqs.resume_detail_id = %(user_id)s
     """
+
     await cur.execute(get_interview_query, {"user_id": user.user_id})
     interviews = await cur.fetchall()
 
     return interviews
 
 
-async def interview_route(interview_id: int, user: UserPayload, db):
+async def interview_detail(interview_id: str, user: UserPayload, db):
     conn, cur = db
 
     get_interview_query = """
     SELECT
-        i.created_at,ins.status,jr.name as title,'Ylogx' as company_name,i.id,'PRESCREENING' as interview_type
+        ciqs.created_at,
+        ciqs.status,
+        jd.job_title AS title,
+        'Ylogx' AS company_name,
+        ciqs.id,
+        UPPER(ciqs.interview_mode) AS interview_type
     FROM
-        interview i
+        candidate_interview_question_session ciqs
     JOIN
-        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00'
+        job_requisition jr ON ciqs.job_requisition_id = jr.id
     JOIN
-        job_requisition jr ON jr.id = i.job_requisition_id
-    WHERE i.id = %(interview_id)s
+        job_description jd ON jr.job_description_id = jd.id
+    WHERE
+        ciqs.id = %(interview_id)s
     """
     await cur.execute(get_interview_query, {"interview_id": interview_id})
     interview = await cur.fetchone()

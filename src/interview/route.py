@@ -9,7 +9,7 @@ from src.interview.service import (
     edit_conversation,
     get_conversation,
     insert_conversation,
-    interview_route,
+    interview_detail,
     list_interview,
     process_user_info,
     start_interview,
@@ -36,9 +36,9 @@ async def interview_list_route(request: Request, db=Depends(get_connection)):
 
 @route.get("/{interview_id}", dependencies=PROTECTED)
 async def interview_detail_route(
-    interview_id: int, request: Request, db=Depends(get_connection)
+    interview_id: str, request: Request, db=Depends(get_connection)
 ):
-    return await interview_route(interview_id, request.state.user, db)
+    return await interview_detail(interview_id, request.state.user, db)
 
 
 @route.get("/{interview_id}/start", dependencies=PROTECTED)
