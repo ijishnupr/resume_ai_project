@@ -43,7 +43,7 @@ async def interview_detail_route(
 
 @route.get("/{interview_id}/start", dependencies=PROTECTED)
 async def start_interview_route(
-    interview_id: int, request: Request, db=Depends(get_connection)
+    interview_id: str, request: Request, db=Depends(get_connection)
 ):
     return await start_interview(interview_id, request.state.user, db)
 

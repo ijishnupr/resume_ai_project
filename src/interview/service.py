@@ -179,9 +179,87 @@ async def interview_detail(interview_id: str, user: UserPayload, db):
     return interview
 
 
-async def get_ephemeral_token():
+async def get_interview_details(interview_id: str, db):
+    conn, cur = db
+
+    get_interview_query = """
+    SELECT
+        -- Basic Session Info
+        ciqs.id,
+        ciqs.created_at,
+        ciqs.status,
+        UPPER(ciqs.interview_mode) AS interview_type,
+        'Ylogx' AS company_name,
+
+        jd.job_title,
+        jd.job_description,
+        jd.responsibilities,
+        jd.must_have_skills,
+        jd.nice_to_have_skills,
+
+        -- Resume Data (For {candidate_resume})
+        jsonb_build_object(
+            'name', rd.name,
+            'raw_text', rd.cf_text,
+            'skills', rd.skill_set,
+            'experience', rd.work_experience,
+            'details', rd.details
+        ) as candidate_resume,
+
+        -- Technical L1 Questions (JSONB columns from schema)
+        ct.technical_questions,
+        ct.recruiter_added_questions AS technical_custom_questions,
+
+        -- Prescreening Questions (Aggregated into a JSON list)
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'question_text', cqp.question_text,
+                    'preferred_answer', cqp.preferred_answer,
+                    'created_by', cqp.created_by,
+                    'is_mandatory', cqp.is_mandatory
+                )
+            )
+            FROM candidate_question_prescreening cqp
+            WHERE cqp.job_requisition_id = ciqs.job_requisition_id
+        ) AS prescreen_questions
+
+    FROM
+        candidate_interview_question_session ciqs
+    -- Join Job Description directly via the session ID
+    LEFT JOIN
+        job_description jd ON ciqs.job_description_id = jd.id
+    -- Join Resume Detail
+    LEFT JOIN
+        resume_detail rd ON ciqs.resume_detail_id = rd.id
+    -- Join Technical Questions (Linked via Requisition ID)
+    LEFT JOIN
+        candidate_technical_L1_question ct ON ct.job_requisition_id = ciqs.job_requisition_id
+    WHERE
+        ciqs.id = %(interview_id)s
+    """
+
+    await cur.execute(get_interview_query, {"interview_id": interview_id})
+    interview_data = await cur.fetchone()
+
+    return interview_data
+
+
+async def get_ephemeral_token(interview: dict):
     async with httpx.AsyncClient() as client:
-        instructions = get_base_instructions(InstructionType("PRESCREENING"))
+        job_title = interview["job_title"]
+        job_description = interview["job_description"]
+        candidate_resume = interview["candidate_resume"]
+        # generated_questions_section = interview["generated_questions_section"]
+        # custom_questions_section = interview["custom_questions_section"]
+        instructions = get_base_instructions(
+            InstructionType("PRESCREENING"),
+            job_title,
+            candidate_resume,
+            job_description,
+            "None",
+            "None",
+        )
         response = await client.post(
             "https://api.openai.com/v1/realtime/sessions",
             headers={
@@ -203,54 +281,46 @@ async def get_ephemeral_token():
         return response.json()
 
 
-async def start_interview(interview_id: int, user: UserPayload, db):
+async def start_interview(interview_id: str, user: UserPayload, db):
     conn, cur = db
-    check_interview_available_query = """
-    SELECT
-        id
-    FROM
-        interview
-    WHERE
-        id = %(interview_id)s and ephemeral_token is null
-    """
-    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
-    interview = await cur.fetchone()
-    if not interview:
+    interview = await get_interview_details(interview_id, db)
+    if interview and interview["status"] != "pending":
         return {"message": "Token Already generated"}
-    token = await get_ephemeral_token()
-    ephemeral_token = token["client_secret"]["value"]
+    token = await get_ephemeral_token(interview)
     insert_into_interview_query = """
     UPDATE
-        interview
+        candidate_interview_question_session
     SET
-     ephemeral_token = %(ephemeral_token)s
+     status = 'in_progress'
     WHERE
         id = %(interview_id)s
     """
 
     await cur.execute(
         insert_into_interview_query,
-        {"ephemeral_token": ephemeral_token, "interview_id": interview_id},
+        {"interview_id": interview_id},
     )
 
-    update_interview_status_query = """
-    UPDATE
-        interview_status
-    SET
-        end_time = now()
-    WHERE
-        interview_id = %(interview_id)s and end_time = '2100-01-01 00:00:00+00'
-    """
-    await cur.execute(update_interview_status_query, {"interview_id": interview_id})
-    insert_interview_status = """
-    INSERT INTO
-        interview_status
-        (interview_id,status)
-    VALUES
-        (%(interview_id)s,'ACTIVE')
+    # Need this code if status history is required
 
-    """
-    await cur.execute(insert_interview_status, {"interview_id": interview_id})
+    # update_interview_status_query = """
+    # UPDATE
+    #     interview_status
+    # SET
+    #     end_time = now()
+    # WHERE
+    #     interview_id = %(interview_id)s and end_time = '2100-01-01 00:00:00+00'
+    # """
+    # await cur.execute(update_interview_status_query, {"interview_id": interview_id})
+    # insert_interview_status = """
+    # INSERT INTO
+    #     interview_status
+    #     (interview_id,status)
+    # VALUES
+    #     (%(interview_id)s,'ACTIVE')
+
+    # """
+    # await cur.execute(insert_interview_status, {"interview_id": interview_id})
 
     return token["client_secret"]
 
