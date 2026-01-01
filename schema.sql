@@ -175,7 +175,7 @@ CREATE TABLE candidate_ai_interview_evaluation (
 CREATE TABLE candidate_question_prescreening (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     job_requisition_id UUID,
-    jod_description_id UUID, -- Keeping typo as per schema requirements
+    jod_description_id UUID,
     question_text TEXT,
     preferred_answer TEXT,
     is_mandatory BOOLEAN,

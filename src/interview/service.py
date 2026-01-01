@@ -184,59 +184,47 @@ async def get_interview_details(interview_id: str, db):
 
     get_interview_query = """
     SELECT
-        -- Basic Session Info
-        ciqs.id,
-        ciqs.created_at,
-        ciqs.status,
-        UPPER(ciqs.interview_mode) AS interview_type,
-        'Ylogx' AS company_name,
+    ciqs.id,
+    ciqs.created_at,
+    ciqs.status,
+    UPPER(ciqs.interview_mode) AS interview_type,
+    'Ylogx' AS company_name,
 
-        jd.job_title,
-        jd.job_description,
-        jd.responsibilities,
-        jd.must_have_skills,
-        jd.nice_to_have_skills,
+    jd.job_title,
+    jd.job_description,
 
-        -- Resume Data (For {candidate_resume})
-        jsonb_build_object(
-            'name', rd.name,
-            'raw_text', rd.cf_text,
-            'skills', rd.skill_set,
-            'experience', rd.work_experience,
-            'details', rd.details
-        ) as candidate_resume,
 
-        -- Technical L1 Questions (JSONB columns from schema)
-        ct.technical_questions,
-        ct.recruiter_added_questions AS technical_custom_questions,
+    -- Resume Data (Bundled as JSON Dict)
+    jsonb_build_object(
+        'name', rd.name,
+        'raw_text', rd.cf_text,
+        'skills', rd.skill_set,
+        'experience', rd.work_experience,
+        'details', rd.details
+    ) AS candidate_resume,
 
-        -- Prescreening Questions (Aggregated into a JSON list)
-        (
-            SELECT jsonb_agg(
-                jsonb_build_object(
-                    'question_text', cqp.question_text,
-                    'preferred_answer', cqp.preferred_answer,
-                    'created_by', cqp.created_by,
-                    'is_mandatory', cqp.is_mandatory
-                )
+    -- Prescreening Questions (Aggregated into a List of JSON Objects)
+    (
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'question_text', sub_cqp.question_text,
+                'preferred_answer', sub_cqp.preferred_answer,
+                'is_mandatory', sub_cqp.is_mandatory,
+                'created_by', sub_cqp.created_by
             )
-            FROM candidate_question_prescreening cqp
-            WHERE cqp.job_requisition_id = ciqs.job_requisition_id
-        ) AS prescreen_questions
+        )
+        FROM candidate_question_prescreening sub_cqp
+        WHERE sub_cqp.job_requisition_id = ciqs.job_requisition_id
+    ) AS prescreen_questions
 
     FROM
         candidate_interview_question_session ciqs
-    -- Join Job Description directly via the session ID
     LEFT JOIN
         job_description jd ON ciqs.job_description_id = jd.id
-    -- Join Resume Detail
     LEFT JOIN
         resume_detail rd ON ciqs.resume_detail_id = rd.id
-    -- Join Technical Questions (Linked via Requisition ID)
-    LEFT JOIN
-        candidate_technical_L1_question ct ON ct.job_requisition_id = ciqs.job_requisition_id
     WHERE
-        ciqs.id = %(interview_id)s
+        ciqs.id = %(interview_id)s;
     """
 
     await cur.execute(get_interview_query, {"interview_id": interview_id})
@@ -278,7 +266,7 @@ async def get_ephemeral_token(interview: dict):
                 status_code=response.status_code, detail="Failed to create session"
             )
 
-        return response.json()
+        return response.json(), instructions
 
 
 async def start_interview(interview_id: str, user: UserPayload, db):
@@ -286,7 +274,7 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     interview = await get_interview_details(interview_id, db)
     if interview and interview["status"] != "pending":
         return {"message": "Token Already generated"}
-    token = await get_ephemeral_token(interview)
+    token, instructions = await get_ephemeral_token(interview)
     insert_into_interview_query = """
     UPDATE
         candidate_interview_question_session
@@ -322,7 +310,7 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     # """
     # await cur.execute(insert_interview_status, {"interview_id": interview_id})
 
-    return token["client_secret"]
+    return token["client_secret"], instructions
 
 
 async def insert_conversation(interview_id, request: ConversationRequest, db):
