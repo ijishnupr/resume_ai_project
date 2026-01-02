@@ -17,4 +17,5 @@ class EditConversationRequest(BaseModel):
 
 
 class PatchInterviewViolation(BaseModel):
-    violation: Literal["abrupt", "graceful"]
+    violation: str
+    description: str

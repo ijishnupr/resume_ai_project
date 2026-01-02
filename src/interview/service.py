@@ -507,14 +507,20 @@ async def update_interview_violation(
 ):
     conn, cur = db
     update_termination_reason_query = """
-    UPDATE
-        candidate_interview_question_session
-    SET
-        termination_reason = %(termination_reason)s
-    where id = %(interview_id)s
+    INSERT INTO
+        interview_violation
+    (interview_session_id,violation_type,description)
+    VALUES(
+        %(interview_id)s,%(violation_type)s,%(description)s
+    )
+
     """
     await cur.execute(
         update_termination_reason_query,
-        {"termination_reason": request.violation, "interview_id": interview_id},
+        {
+            "violation_type": request.violation,
+            "interview_id": interview_id,
+            "description": request.description,
+        },
     )
     return {"message": "Termination Details Updated"}

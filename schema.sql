@@ -12,13 +12,13 @@ CREATE TABLE candidate_user (
 
 
 
--- CREATE TABLE interview_violation (
---     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
---     interview_id INTEGER REFERENCES interview(id) ON DELETE CASCADE,
---     violation_type VARCHAR(100) NOT NULL,
---     description TEXT,
---     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
--- );
+CREATE TABLE interview_violation (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    interview_session_id UUID,
+    violation_type VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 
 CREATE TABLE candidate_user_session (
@@ -307,3 +307,7 @@ FOREIGN KEY (job_requisition_id) REFERENCES job_requisition(id);
 ALTER TABLE candidate_technical_L1_question
 ADD CONSTRAINT fk_tech_l1_job_req
 FOREIGN KEY (job_requisition_id) REFERENCES job_requisition(id);
+
+ALTER TABLE interview_violation
+ADD CONSTRAINT inv_vol_inv_question_sess
+FOREIGN KEY (interview_session_id) REFERENCES candidate_interview_question_session(id);
