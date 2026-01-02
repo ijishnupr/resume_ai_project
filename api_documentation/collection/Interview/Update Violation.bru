@@ -1,0 +1,17 @@
+meta {
+  name: Update Violation
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{url}}/api/interview/44444444-4444-4444-4444-444444444444/violation
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "violation":"abrupt"
+  }
+}

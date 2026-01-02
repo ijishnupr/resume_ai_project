@@ -14,3 +14,7 @@ class ConversationRequest(BaseModel):
 
 class EditConversationRequest(BaseModel):
     conversation: str
+
+
+class PatchInterviewViolation(BaseModel):
+    violation: Literal["abrupt", "graceful"]

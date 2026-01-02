@@ -6,7 +6,11 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
-from src.interview.model import ConversationRequest, UserV1Request
+from src.interview.model import (
+    ConversationRequest,
+    PatchInterviewViolation,
+    UserV1Request,
+)
 from src.interview.prompts import InstructionType, get_base_instructions
 from src.shared.dependency import UserPayload
 
@@ -496,3 +500,21 @@ async def edit_conversation(conversation_id: int, conversation: str, db):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"message": "Conversation Not Found Or Completed"},
         )
+
+
+async def update_interview_violation(
+    interview_id: str, request: PatchInterviewViolation, db
+):
+    conn, cur = db
+    update_termination_reason_query = """
+    UPDATE
+        candidate_interview_question_session
+    SET
+        termination_reason = %(termination_reason)s
+    where id = %(interview_id)s
+    """
+    await cur.execute(
+        update_termination_reason_query,
+        {"termination_reason": request.violation, "interview_id": interview_id},
+    )
+    return {"message": "Termination Details Updated"}
