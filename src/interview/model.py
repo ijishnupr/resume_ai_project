@@ -1,11 +1,9 @@
-from typing import Literal
-
 from pydantic import BaseModel
 
 
 class ConversationRequest(BaseModel):
-    conversation: str
-    source: Literal["AI", "USER"]
+    ai: str
+    user: str
 
 
 class EditConversationRequest(BaseModel):

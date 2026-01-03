@@ -65,7 +65,7 @@ async def update_interview_status_complete_route(
 
 
 @route.get("/{interview_id}/conversation", dependencies=PROTECTED)
-async def get_conversation_route(interview_id: int, db=Depends(get_connection)):
+async def get_conversation_route(interview_id: str, db=Depends(get_connection)):
     return await get_conversation(interview_id, db)
 
 

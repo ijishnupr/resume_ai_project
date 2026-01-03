@@ -1,3 +1,4 @@
+import datetime
 from psycopg.types.json import Jsonb
 import os
 
@@ -217,8 +218,9 @@ async def insert_conversation(
     conn, cur = db
 
     data = {
-        "source": request.source,
-        "conversation": request.conversation,
+        "ai": request.ai,
+        "user": request.user,
+        "time_stamp": str(datetime.datetime.now()),
     }
 
     update_query = """
@@ -306,13 +308,15 @@ async def update_interview_status(interview_id: int, interview_status: str, db):
         )
 
 
-async def get_conversation(interview_id: int, db):
+async def get_conversation(interview_id: str, db):
     conn, cur = db
     check_interview_available_query = """
     SELECT
-        i.id
+        i.id,
+        i.transcript
+
     FROM
-        interview i
+        candidate_interview_question_session i
     WHERE
         i.id = %(interview_id)s
     """
@@ -324,35 +328,7 @@ async def get_conversation(interview_id: int, db):
             content={"message": "Interview Not Found"},
         )
 
-    get_conversation_query = """
-    SELECT
-        ic.id AS conversation_id,
-        ic.transcript_data,
-        ic.type as source,
-        ic.created_at,
-        COALESCE(
-            json_agg(
-                json_build_object(
-                    'conversation', ich.conversation,
-                    'created_at', ich.created_at
-                )
-            ) FILTER (WHERE ich.id IS NOT NULL),
-            '[]'
-        ) AS edited_field
-    FROM
-        interview_conversation ic
-    LEFT JOIN
-        interview_conversation_history ich
-        ON ich.interview_conversation_id = ic.id
-    WHERE
-        ic.interview_id = %(interview_id)s
-    GROUP BY
-        ic.id
-    ORDER BY
-        ic.created_at ASC
-    """
-
-    await cur.execute(get_conversation_query, {"interview_id": interview_id})
+    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
     conversations = await cur.fetchall()
 
     return {"conversations": conversations}
