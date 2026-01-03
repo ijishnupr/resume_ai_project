@@ -307,8 +307,8 @@ async def get_conversation(interview_id: str, db):
     check_interview_available_query = """
     SELECT
 
-        i.ai_detected_response as AI_column,
-        i.annotated_response as annotated
+        i.ai_detected_response,
+        i.annotated_response
 
     FROM
         candidate_interview_question_session i
