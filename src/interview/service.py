@@ -18,6 +18,29 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
+async def open_ai(prompt):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.openai.com/v1/realtime/sessions",
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gpt-4o-realtime-preview-2024-12-17",
+                "voice": "alloy",
+                "instructions": prompt,
+            },
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code, detail="Failed to create session"
+            )
+
+        return response.json()
+
+
 async def list_interview(user: UserPayload, db):
     conn, cur = db
 
@@ -131,39 +154,21 @@ async def get_interview_details(interview_id: str, db):
 
 
 async def get_ephemeral_token(interview: dict):
-    async with httpx.AsyncClient() as client:
-        job_title = interview["job_title"]
-        job_description = interview["job_description"]
-        candidate_resume = interview["candidate_resume"]
-        # generated_questions_section = interview["generated_questions_section"]
-        # custom_questions_section = interview["custom_questions_section"]
-        instructions = get_base_instructions(
-            InstructionType("PRESCREENING"),
-            job_title,
-            candidate_resume,
-            job_description,
-            "None",
-            "None",
-        )
-        response = await client.post(
-            "https://api.openai.com/v1/realtime/sessions",
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "gpt-4o-realtime-preview-2024-12-17",
-                "voice": "alloy",
-                "instructions": instructions,
-            },
-        )
-
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=response.status_code, detail="Failed to create session"
-            )
-
-        return response.json(), instructions
+    job_title = interview["job_title"]
+    job_description = interview["job_description"]
+    candidate_resume = interview["candidate_resume"]
+    # generated_questions_section = interview["generated_questions_section"]
+    # custom_questions_section = interview["custom_questions_section"]
+    instructions = get_base_instructions(
+        InstructionType("PRESCREENING"),
+        job_title,
+        candidate_resume,
+        job_description,
+        "None",
+        "None",
+    )
+    response = await open_ai(instructions)
+    return response, instructions
 
 
 async def start_interview(interview_id: str, user: UserPayload, db):
@@ -251,61 +256,50 @@ async def insert_conversation(
     return {"message": "Conversation Updated"}
 
 
-async def update_interview_status(interview_id: int, interview_status: str, db):
+async def update_interview_status(interview_id: str, interview_status: str, db):
     conn, cur = db
-    check_interview_available_query = """
+    check_interview_query = """
     SELECT
-        i.id,ins.status
+        id,
+        transcript
     FROM
-        interview i
-    JOIN
-        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00'
+        candidate_interview_question_session
     WHERE
-        i.id = %(interview_id)s
+        id = %(interview_id)s AND status not in ('abrupt','graceful')
     """
-    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
+    await cur.execute(check_interview_query, {"interview_id": interview_id})
     interview = await cur.fetchone()
     if not interview:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"message": "Interview Not Found"},
         )
-    previous_status = interview["status"]
-    if previous_status == "ACTIVE":
-        update_interview_status_query = """
-        UPDATE
-            interview_status
-        SET
-            end_time = now()
-        WHERE
-            interview_id = %(interview_id)s and end_time = '2100-01-01 00:00:00+00'
-        """
-        await cur.execute(update_interview_status_query, {"interview_id": interview_id})
-        insert_interview_status = """
-        INSERT INTO
-            interview_status
-            (interview_id,status)
-        VALUES
-            (%(interview_id)s,%(status)s)
+    conversation = interview["transcript"]
 
-        """
-        await cur.execute(
-            insert_interview_status,
-            {"interview_id": interview_id, "status": interview_status},
-        )
+    prompt = f"This interview violated the interview this is the conversation he had with the interviewer{conversation}"
+    ai_detected_response = await open_ai(prompt)
 
-        return {"message": "Interview Status Updated"}
+    update_interview_status_query = """
+    UPDATE
+        candidate_interview_question_session
+    SET
+        termination_reason = %(interview_status)s,
+        ai_detected_response = %(ai_detected_response)s
 
-    elif previous_status == "CLOSED":
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": "Session Is Already Closed"},
-        )
-    else:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": "Session Is Already COMPLETED"},
-        )
+    WHERE
+        id = %(interview_id)s
+
+    """
+    await cur.execute(
+        update_interview_status_query,
+        {
+            "interview_status": interview_status,
+            "interview_id": interview_id,
+            "ai_detected_response": Jsonb(ai_detected_response),
+        },
+    )
+
+    return {"message": "Interview Status Updated"}
 
 
 async def get_conversation(interview_id: str, db):

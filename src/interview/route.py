@@ -52,16 +52,16 @@ async def insert_conversation_route(
     return await insert_conversation(interview_id, request, db)
 
 
-@route.post("/{interview_id}/close", dependencies=PROTECTED)
-async def update_interview_status_route(interview_id: int, db=Depends(get_connection)):
-    return await update_interview_status(interview_id, "SESSION_CLOSED", db)
+@route.post("/{interview_id}/abrupt", dependencies=PROTECTED)
+async def update_interview_status_route(interview_id: str, db=Depends(get_connection)):
+    return await update_interview_status(interview_id, "abrupt", db)
 
 
-@route.post("/{interview_id}/completed", dependencies=PROTECTED)
+@route.post("/{interview_id}/graceful", dependencies=PROTECTED)
 async def update_interview_status_complete_route(
-    interview_id: int, db=Depends(get_connection)
+    interview_id: str, db=Depends(get_connection)
 ):
-    return await update_interview_status(interview_id, "COMPLETED", db)
+    return await update_interview_status(interview_id, "graceful", db)
 
 
 @route.get("/{interview_id}/conversation", dependencies=PROTECTED)
