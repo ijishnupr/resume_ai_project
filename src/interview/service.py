@@ -265,7 +265,7 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
     FROM
         candidate_interview_question_session
     WHERE
-        id = %(interview_id)s AND status not in ('abrupt','graceful')
+        id = %(interview_id)s AND termination_reason not in ('abrupt','graceful')
     """
     await cur.execute(check_interview_query, {"interview_id": interview_id})
     interview = await cur.fetchone()
@@ -274,10 +274,10 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"message": "Interview Not Found"},
         )
-    conversation = interview["transcript"]
+    # conversation = interview["transcript"]
 
-    prompt = f"This interview violated the interview this is the conversation he had with the interviewer{conversation}"
-    ai_detected_response = await open_ai(prompt)
+    # prompt = f"This interview violated the interview this is the conversation he had with the interviewer{conversation}"
+    # ai_detected_response = await open_ai(prompt)
 
     update_interview_status_query = """
     UPDATE
@@ -295,7 +295,7 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
         {
             "interview_status": interview_status,
             "interview_id": interview_id,
-            "ai_detected_response": Jsonb(ai_detected_response),
+            "ai_detected_response": Jsonb(interview["transcript"]),
         },
     )
 
@@ -306,8 +306,9 @@ async def get_conversation(interview_id: str, db):
     conn, cur = db
     check_interview_available_query = """
     SELECT
-        i.id,
-        i.transcript
+
+        i.ai_detected_response as AI_column,
+        i.annotated_response as annotated
 
     FROM
         candidate_interview_question_session i
@@ -323,50 +324,56 @@ async def get_conversation(interview_id: str, db):
         )
 
     await cur.execute(check_interview_available_query, {"interview_id": interview_id})
-    conversations = await cur.fetchall()
+    conversations = await cur.fetchone()
 
-    return {"conversations": conversations}
+    return conversations
 
 
-async def edit_conversation(conversation_id: int, conversation: str, db):
+async def edit_conversation(interview_id: str, index: int, conversation: str, db):
     conn, cur = db
-    check_conversation_exist_query = """
+    get_interview_query = """
     SELECT
-        ic.id
+        transcript
     FROM
-        interview_conversation ic
-    JOIN
-        interview i ON i.id = ic.interview_id
-    JOIN
-        interview_status ins ON ins.interview_id = i.id and end_time = '2100-01-01 00:00:00+00' AND status not in ('COMPLETED','SCHEDULED')
+        candidate_interview_question_session
     WHERE
-        ic.id = %(conversation_id)s
+        id = %(interview_id)s
     """
-    await cur.execute(
-        check_conversation_exist_query, {"conversation_id": conversation_id}
-    )
-    conversation_data = await cur.fetchone()
-    if conversation_data:
-        insert_into_conversation_history_query = """
-        INSERT INTO
-            interview_conversation_history
-        (interview_conversation_id,conversation)
-        VALUES
-            (%(interview_conversation_id)s,%(conversation)s)
-        """
-        await cur.execute(
-            insert_into_conversation_history_query,
-            {
-                "conversation": conversation,
-                "interview_conversation_id": conversation_id,
-            },
-        )
-        return {"message": "Conversation Updated"}
-    else:
+    await cur.execute(get_interview_query, {"interview_id": interview_id})
+    interview = await cur.fetchone()
+    if not interview:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"message": "Conversation Not Found Or Completed"},
+            content={"message": "Interview Not Found"},
         )
+
+    transcript = interview["transcript"]
+    if index < 0 or index >= len(transcript):
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"message": "Invalid conversation index"},
+        )
+
+    updated_transcript = transcript.copy()
+    updated_transcript[index] = {
+        **updated_transcript[index],
+        "user": conversation,
+        "edited_at": str(datetime.datetime.now()),
+    }
+    update_interview_query = """
+    UPDATE
+        candidate_interview_question_session
+    SET
+        annotated_response = %(updated_transcript)s
+    WHERE
+        id = %(interview_id)s
+
+    """
+    await cur.execute(
+        update_interview_query,
+        {"updated_transcript": Jsonb(updated_transcript), "interview_id": interview_id},
+    )
+    return {"message": "Conversation Updated"}
 
 
 async def update_interview_violation(

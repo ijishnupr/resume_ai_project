@@ -69,11 +69,14 @@ async def get_conversation_route(interview_id: str, db=Depends(get_connection)):
     return await get_conversation(interview_id, db)
 
 
-@route.post("/conversation/{conversation_id}", dependencies=PROTECTED)
+@route.patch("/{interview_id}/conversation/{index}", dependencies=PROTECTED)
 async def edit_conversation_route(
-    conversation_id: int, request: EditConversationRequest, db=Depends(get_connection)
+    interview_id: str,
+    index: int,
+    request: EditConversationRequest,
+    db=Depends(get_connection),
 ):
-    return await edit_conversation(conversation_id, request.conversation, db)
+    return await edit_conversation(interview_id, index, request.user, db)
 
 
 @route.post("/{interview_id}/violation")

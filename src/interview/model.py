@@ -7,7 +7,7 @@ class ConversationRequest(BaseModel):
 
 
 class EditConversationRequest(BaseModel):
-    conversation: str
+    user: str
 
 
 class PatchInterviewViolation(BaseModel):
