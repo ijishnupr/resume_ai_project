@@ -139,7 +139,7 @@ CREATE TABLE candidate_interview_question_session (
     end_time TIMESTAMP,
     total_duration_minutes INTEGER,
     termination_reason TEXT,
-    transcript JSONB, --json from fronted
+    transcript JSONB, --json from fronted [{}{}{}]
     ai_detected_response JSONB, -- open ai respnse
     annotated_response JSONB, -- edited field
     tab_switch_count INTEGER,

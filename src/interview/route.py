@@ -4,7 +4,6 @@ from src.interview.model import (
     ConversationRequest,
     EditConversationRequest,
     PatchInterviewViolation,
-    UserV1Request,
 )
 from src.interview.service import (
     edit_conversation,
@@ -12,7 +11,6 @@ from src.interview.service import (
     insert_conversation,
     interview_detail,
     list_interview,
-    process_user_info,
     start_interview,
     update_interview_status,
     update_interview_violation,
@@ -22,13 +20,6 @@ from src.shared.dependency import has_access
 
 route = APIRouter()
 PROTECTED = [Depends(has_access)]
-
-
-@route.post("/{job_requisition_id}")
-async def userinfo_route(
-    job_requisition_id: int, request: UserV1Request, db=Depends(get_connection)
-):
-    return await process_user_info(job_requisition_id, request, db)
 
 
 @route.get("/", dependencies=PROTECTED)
@@ -52,7 +43,7 @@ async def start_interview_route(
 
 @route.post("/{interview_id}/conversation", dependencies=PROTECTED)
 async def insert_conversation_route(
-    interview_id: int,
+    interview_id: str,
     request: ConversationRequest,
     db=Depends(
         get_connection,

@@ -1,7 +1,7 @@
+from psycopg.types.json import Jsonb
 import os
 
 import httpx
-from argon2 import PasswordHasher
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
@@ -9,120 +9,12 @@ from fastapi.responses import JSONResponse
 from src.interview.model import (
     ConversationRequest,
     PatchInterviewViolation,
-    UserV1Request,
 )
 from src.interview.prompts import InstructionType, get_base_instructions
 from src.shared.dependency import UserPayload
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-
-async def process_user_info(job_requisition_id: int, request: UserV1Request, db):
-    conn, cur = db
-    for resume_id in request.resume_ids:
-        get_user_email_query = """
-        SELECT
-            cu.email
-        FROM
-            candidate_user cu
-        JOIN
-            resume_detail rd ON rd.candidate_user_id = cu.id
-        where
-            rd.id = %(resume_id)s
-        """
-        await cur.execute(get_user_email_query, {"resume_id": resume_id})
-        user_email = await cur.fetchone()
-        user_email = user_email["email"]
-        get_user_query = """
-        SELECT
-            id
-        FROM
-            interview_candidate
-        WHERE
-            email = %(email)s
-        """
-        await cur.execute(get_user_query, {"email": user_email})
-        user_record = await cur.fetchone()
-
-        user_id = None
-        is_password_reset = False
-        if user_record:
-            user_id = user_record["id"]
-            is_password_reset = True
-
-        else:
-            insert_user_query = """
-            INSERT INTO interview_candidate
-                ( email)
-            VALUES
-                ( %(email)s)
-            RETURNING id
-            """
-            await cur.execute(
-                insert_user_query,
-                {
-                    "email": user_email,
-                },
-            )
-            new_user = await cur.fetchone()
-            user_id = new_user["id"]
-            ph = PasswordHasher()
-            # random_password: str = secrets.token_urlsafe(12)
-            random_password: str = "password"
-            encoded_password: str = ph.hash(random_password)
-
-            insert_into_temp_password_query = """
-            UPDATE
-                interview_candidate
-            SET
-                password = %(temp_password)s
-            WHERE
-                id = %(user_id)s
-            """
-            await cur.execute(
-                insert_into_temp_password_query,
-                {"temp_password": encoded_password, "user_id": user_id},
-            )
-
-        insert_interview_query = """
-        INSERT INTO
-            interview
-            (user_id, job_requisition_id,resume_id)
-        VALUES
-            (%(user_id)s,  %(job_requisition_id)s, %(resume_id)s)
-        RETURNING id
-        """
-        await cur.execute(
-            insert_interview_query,
-            {
-                "user_id": user_id,
-                "job_requisition_id": job_requisition_id,
-                "resume_id": resume_id,
-            },
-        )
-        interview_record = await cur.fetchone()
-        interview_id = interview_record["id"]
-
-        insert_status_query = """
-        INSERT INTO interview_status
-            (interview_id, status)
-        VALUES
-            (%(interview_id)s, 'SCHEDULED')
-        """
-        await cur.execute(insert_status_query, {"interview_id": interview_id})
-
-        # send_email_functionality_here
-        if is_password_reset:
-            # send mail for existion user
-            pass
-        else:
-            # send mail for new user
-            pass
-
-    return {
-        "message": "User processed and interview generated",
-    }
 
 
 async def list_interview(user: UserPayload, db):
@@ -317,38 +209,43 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     return token["client_secret"], instructions
 
 
-async def insert_conversation(interview_id, request: ConversationRequest, db):
+async def insert_conversation(
+    interview_id: str,
+    request: ConversationRequest,
+    db,
+):
     conn, cur = db
-    check_interview_available_query = """
-    SELECT
-        id
-    FROM
-        interview
+
+    data = {
+        "source": request.source,
+        "conversation": request.conversation,
+    }
+
+    update_query = """
+    UPDATE candidate_interview_question_session
+    SET
+        transcript = COALESCE(transcript, '[]'::jsonb) || %(new_item)s,
+        updated_at = CURRENT_TIMESTAMP
     WHERE
         id = %(interview_id)s
+    RETURNING id;
     """
-    await cur.execute(check_interview_available_query, {"interview_id": interview_id})
-    interview = await cur.fetchone()
-    if not interview:
+
+    await cur.execute(
+        update_query,
+        {
+            "interview_id": interview_id,
+            "new_item": Jsonb([data]),
+        },
+    )
+
+    updated = await cur.fetchone()
+    if not updated:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"message": "Interview Not Found"},
         )
-    insert_into_interview_conversation_query = """
-    INSERT INTO
-        interview_conversation
-        (interview_id,transcript_data,type)
-    VALUES
-        (%(interview_id)s,%(transcript_data)s,%(type)s)
-    """
-    await cur.execute(
-        insert_into_interview_conversation_query,
-        {
-            "interview_id": interview_id,
-            "transcript_data": request.conversation,
-            "type": request.source,
-        },
-    )
+
     return {"message": "Conversation Updated"}
 
 
