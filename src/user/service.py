@@ -10,7 +10,7 @@ async def me(user: UserPayload, db):
     SELECT
         email
     FROM
-        interview_candidate
+        candidate_user
     WHERE
         id = %(interview_candidate_id)s
     """

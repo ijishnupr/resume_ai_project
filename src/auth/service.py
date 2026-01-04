@@ -27,7 +27,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
     SELECT
         id
     FROM
-        interview_candidate
+        candidate_user
     WHERE
         id = %(user_id)s and is_reset_password = FALSE
     """
@@ -37,7 +37,7 @@ async def process_password_reset(request: PasswordResetRequest, user_id: int, db
         return {"Password is already changed"}
     insert_into_interview_candidate_query = """
     UPDATE
-        interview_candidate
+        candidate_user
     SET
         password = %(new_password)s, is_reset_password = TRUE
     WHERE
@@ -78,9 +78,12 @@ async def user_login(client_req: Request, request: LoginRequest, db):
         return {"error": "Invalid password"}
 
     if not user_record["is_reset_password"]:
-        data = {"user_id": user_record["user_id"]}
+        data = {
+            "user_id": str(user_record["user_id"]),
+        }
         encoded_jwt = jwt.encode(data, JWT_SECRET_EMAIL, algorithm="HS256")
         return {"is_reset_password": False, "token": encoded_jwt}
+
     refresh_token = secrets.token_urlsafe(64)
     ip_address = client_req.headers.get(
         "x-forwarded-for", client_req.client.host

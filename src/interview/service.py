@@ -1,11 +1,11 @@
 import datetime
-from psycopg.types.json import Jsonb
 import os
 
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
+from psycopg.types.json import Jsonb
 
 from src.interview.model import (
     ConversationRequest,
@@ -212,7 +212,10 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     # """
     # await cur.execute(insert_interview_status, {"interview_id": interview_id})
 
-    return token["client_secret"], instructions
+    return {
+        **token["client_secret"],
+        "instructions": instructions,
+    }
 
 
 async def insert_conversation(
@@ -265,7 +268,7 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
     FROM
         candidate_interview_question_session
     WHERE
-        id = %(interview_id)s AND termination_reason not in ('abrupt','graceful')
+        id = %(interview_id)s AND termination_reason is NULL
     """
     await cur.execute(check_interview_query, {"interview_id": interview_id})
     interview = await cur.fetchone()
