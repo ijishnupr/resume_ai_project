@@ -5,7 +5,11 @@ meta {
 }
 
 post {
-  url: {{url}}/api/interview//complete
+  url: {{url}}/api/interview/44444444-4444-4444-4444-444444444444/complete
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
