@@ -478,7 +478,8 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
     conn, cur = db
     interview_data = await get_interview_details(interview_id, db)
     if interview_data["interview_mode"] == "prescreen":
-        prompt = get_evaluation_prompt(
+        prompt = await get_evaluation_prompt(
+            db,
             InstructionType("PRESCREENING"),
             interview_data["transcript"],
             interview_data["job_description"],
@@ -503,7 +504,8 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
         response = await call_open_ai(messages)
 
     else:
-        prompt = get_evaluation_prompt(
+        prompt = await get_evaluation_prompt(
+            db,
             InstructionType("PRESCREENING"),
             interview_data["transcript"],
             interview_data["job_description"],

@@ -403,175 +403,45 @@ def get_base_instructions(
         # ]
 
 
-def get_evaluation_prompt(
+async def get_evaluation_prompt(
+    db,
     instruction_type: InstructionType,
     conversation_text: str,
     job_description: str = "",
     resume: str = "",
     job_metadata: dict | None = None,
 ):
+    conn, cur = db
+
+    get_evaluation_query = """
+    SELECT
+        prompt
+    FROM
+        prompt_config
+    WHERE
+        prompt_code = %(prompt_code)s
+    """
+
     if instruction_type == InstructionType.PRESCREENING:
-        EVALUATION_PROMPT = f"""
-        You are an experienced HR prescreener. Summarize the prescreening discussion ONLY.
+        prompt_code = "pre_screening_evaluation"
+    elif instruction_type == InstructionType.L1:
+        prompt_code = "l1_evaluation"
+    else:
+        raise ValueError("Unsupported instruction type")
 
-        CRITICAL: Maintain professional assessment language. When describing responses, use direct reference (e.g., "Expressed interest in...", "Indicated availability of...") without pronouns where possible.
+    await cur.execute(get_evaluation_query, {"prompt_code": prompt_code})
+    row = await cur.fetchone()
 
-        TRANSCRIPT:
-        {conversation_text}
+    if not row or not row.get("prompt"):
+        raise ValueError(f"Prompt not found for {prompt_code}")
 
-        JOB DESCRIPTION (truncated):
-        {job_description}
+    prompt_template: str = row["prompt"]
 
-        RESUME (truncated):
-        {resume}
+    final_prompt = prompt_template.format(
+        conversation_text=conversation_text,
+        job_description=job_description,
+        resume=resume,
+        job_metadata=job_metadata or "None",
+    )
 
-        JOB METADATA (structured):
-        {job_metadata}
-
-        Return STRICT JSON with EXACTLY these top-level fields:
-        {{
-        "prescreening_summary": "<3–5 sentence professional summary using direct language>",
-        "highlights": ["<bullet 1>", "<bullet 2>", "<bullet 3>", "<optional bullet 4>"] ,
-        "fit_score": <0-100 integer>
-        }}
-
-        Rules:
-        - "fit_score" must be an integer (no float) representing overall role fit.
-        - "highlights" must have 3 or 4 concise bullet strings.
-        - No extra fields, comments, or explanations.
-        - Use professional, direct language without pronouns where possible.
-        - Never use gendered pronouns or specific names.
-
-        MANDATORY HIGHLIGHTS CONTENT (override generic phrasing):
-        The highlights array MUST include concise bullets covering (in this order):
-        1. Notice Period / Availability (e.g., "Notice Period: Immediate" or "Notice Period: 30 days" or "Notice Period: Not specified")
-        2. Expected Compensation / CTC with currency (e.g., "Expected CTC: 28 LPA" or "Expected CTC: 150k USD" or "Expected CTC: Not specified")
-        3. Relocation Willingness (e.g., "Relocation: Open" / "Relocation: Not open" / "Relocation: Not specified")
-        4. (Optional if information present) Work Authorization or Remote/On-site Preference (e.g., "Authorization: Valid US Work Permit" OR "Work Preference: Hybrid" OR if absent skip this bullet)
-
-        If a required data point was not mentioned, explicitly write "Not specified" for that bullet.
-        Bullets must start with the exact labels: "Notice Period:", "Expected CTC:", "Relocation:" and optional "Authorization:" or "Work Preference:".
-        Include metadata alignment ONLY inside prescreening_summary (mention job_type fit, remote/location alignment, compensation structure awareness, and start date feasibility). Do NOT add extra top-level fields.
-
-        SALARY CURRENCY EVALUATION RULES:
-        - Compare candidate's stated salary expectation against JR salary ONLY after confirming both are in the same currency
-        - If JR currency is USD and candidate responded in INR (or vice versa): Flag as "CURRENCY_MISMATCH" in summary
-        - DO NOT penalize candidate for currency mismatch - they should not be expected to infer recruiter's currency
-        - Report both values as stated: "Candidate expects X [currency], JR specifies Y [currency] - currency mismatch noted"
-        - Currency alignment check is informational only, not a scoring factor
-        """
-        return EVALUATION_PROMPT
-
-    if instruction_type == InstructionType.L1:
-        L1_EVALUATION_PROMPT = """
-        You are an expert technical interviewer evaluating an L1 (Level 1) technical screening interview.
-
-        INTERVIEW CONTEXT:
-        Job Title: {job_title}
-        Experience Band: {experience_band}
-        Questions Asked: {question_count}
-
-        CONVERSATION TRANSCRIPT:
-        {conversation_text}
-
-        TECHNICAL QUESTIONS REFERENCE:
-        {questions_reference}
-
-        ## EVALUATION GUARDRAILS:
-
-        1. *FAIR ASSESSMENT*:
-        - Evaluate based on what was demonstrated, not assumptions
-        - Account for nervousness - focus on substance over delivery style
-        - Consider that verbal explanations differ from written answers
-        - Give credit for partially correct answers with good reasoning
-
-        2. *VOICE INTERVIEW ALLOWANCES*:
-        - Don't penalize for lack of code - this was a verbal interview
-        - Value clear explanations and thought process
-        - Accept real-world examples as valid demonstrations of knowledge
-        - Consider that some concepts are harder to articulate verbally
-
-        3. *CONTEXT AWARENESS*:
-        - Factor in the candidate's experience level expectations
-        - A junior candidate explaining basics well ≠ a senior failing to go deep
-        - Match evaluation criteria to the {experience_band} level
-
-        4. *PROHIBITED IN EVALUATION*:
-        - Don't compare to hypothetical "perfect" answers
-        - Don't assume knowledge from credentials alone
-        - Don't penalize accents or speaking styles
-        - Don't weight early nervousness against overall performance
-
-        5. *EXACT RESPONSE EVALUATION* (CRITICAL):
-        - Evaluate EXACT candidate responses only - as recorded verbatim
-        - Do NOT use rephrased, paraphrased, or interpreted versions
-        - Do NOT infer what candidate "meant to say" - evaluate what was actually said
-        - Base all scoring on the literal transcript content
-        - If response is unclear or incomplete, score based on what was stated, not assumed intent
-
-        YOUR TASK:
-        Evaluate the candidate's technical competency based on their answers to the L1 screening questions.
-
-        EVALUATION CRITERIA:
-        1. *Technical Accuracy*: Did they provide correct answers?
-        2. *Depth of Knowledge*: How deep is their understanding of concepts?
-        3. *Practical Experience*: Do they demonstrate hands-on experience?
-        4. *Communication*: Can they explain technical concepts clearly?
-        5. *Problem-Solving*: Do they show logical thinking and approach?
-
-        OUTPUT FORMAT (STRICT JSON):
-        {{
-        "overall_score": <0-100>,
-        "pass_recommendation": <true/false>,
-        "technical_strength": "<STRONG|MODERATE|WEAK>",
-        "experience_level_match": "<MATCHES|ABOVE|BELOW>",
-        "summary": "2-3 sentence overall assessment",
-        "question_scores": [
-            {{
-            "question_number": 1,
-            "skill": "skill name",
-            "score": <0-100>,
-            "answer_quality": "<EXCELLENT|GOOD|AVERAGE|POOR|INCOMPLETE>",
-            "key_points_covered": ["point1", "point2"],
-            "gaps": ["missing concept1", "missing concept2"],
-            "notes": "Brief assessment of this answer"
-            }}
-        ],
-        "strengths": [
-            "Specific strength observed",
-            "Another strength"
-        ],
-        "weaknesses": [
-            "Specific gap or weakness",
-            "Another area for improvement"
-        ],
-        "technical_skills_assessment": {{
-            "<skill_name>": {{
-            "proficiency": "<STRONG|MODERATE|WEAK|NOT_ASSESSED>",
-            "evidence": "What they demonstrated"
-            }}
-        }},
-        "recommendations": [
-            "Next step recommendation",
-            "Another recommendation"
-        ],
-        "interview_quality": {{
-            "clarity_of_responses": <0-10>,
-            "technical_depth": <0-10>,
-            "communication_skill": <0-10>
-        }}
-        }}
-
-        SCORING GUIDELINES:
-        - 80-100: Excellent - Strong technical knowledge, clear explanations, ready for next round
-        - 60-79: Good - Solid understanding, minor gaps, likely proceed
-        - 40-59: Average - Some knowledge, significant gaps, borderline case
-        - 0-39: Weak - Major gaps, unclear explanations, likely reject
-
-        PASS RECOMMENDATION:
-        - Pass (true): Score >= 60 AND no critical gaps in must-have skills
-        - Fail (false): Score < 60 OR critical gaps in must-have skills
-
-        Be objective and fair. Base your evaluation solely on what was demonstrated in the interview.
-        """
-        return L1_EVALUATION_PROMPT
+    return final_prompt
