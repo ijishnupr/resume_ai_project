@@ -223,13 +223,14 @@ async def get_interview_details(interview_id: str, db):
     return interview_data
 
 
-async def get_ephemeral_token(interview: dict):
+async def get_ephemeral_token(interview: dict, db):
     job_title = interview["job_title"]
     job_description = interview["job_description"]
     candidate_resume = interview["candidate_resume"]
     # generated_questions_section = interview["generated_questions_section"]
     # custom_questions_section = interview["custom_questions_section"]
-    instructions = get_base_instructions(
+    instructions = await get_base_instructions(
+        db,
         InstructionType("PRESCREENING"),
         job_title,
         candidate_resume,
@@ -246,7 +247,7 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     interview = await get_interview_details(interview_id, db)
     if interview and interview["status"] != "pending":
         return {"message": "Token Already generated"}
-    token, instructions = await get_ephemeral_token(interview)
+    token, instructions = await get_ephemeral_token(interview, db)
     insert_into_interview_query = """
     UPDATE
         candidate_interview_question_session
