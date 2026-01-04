@@ -55,23 +55,8 @@ def _normalize_highlights(highlights: list) -> list:
     return normalized
 
 
-async def call_open_ai(prompt: str, audio_file_path: str | None = None):
+async def call_open_ai(messages):
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
-    # Note: Audio analysis not supported in Chat Completions API
-    audio_note = (
-        " (Note: Audio file provided but analysis limited to transcript)"
-        if audio_file_path
-        else ""
-    )
-
-    messages = [
-        {
-            "role": "system",
-            "content": f"You are an expert technical interviewer and communication evaluator. Analyze the interview transcript for comprehensive assessment.{audio_note}",
-        },
-        {"role": "user", "content": prompt},
-    ]
 
     # try:
     resp = client.chat.completions.create(
@@ -500,11 +485,24 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
             interview_data["candidate_resume"],
             interview_data["metadata"],
         )
-        response = await call_open_ai(prompt)
+        audio_file_path = False
+        # Note: Audio analysis not supported in Chat Completions API
+        audio_note = (
+            " (Note: Audio file provided but analysis limited to transcript)"
+            if audio_file_path
+            else ""
+        )
+
+        messages = [
+            {
+                "role": "system",
+                "content": f"You are an expert technical interviewer and communication evaluator. Analyze the interview transcript for comprehensive assessment.{audio_note}",
+            },
+            {"role": "user", "content": prompt},
+        ]
+        response = await call_open_ai(messages)
 
     else:
-        prompt = await get_interview_details(interview_id, db)
-    if interview_data["interview_mode"] == "technical":
         prompt = get_evaluation_prompt(
             InstructionType("PRESCREENING"),
             interview_data["transcript"],
@@ -512,7 +510,23 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
             interview_data["candidate_resume"],
             interview_data["metadata"],
         )
-        response = await call_open_ai(prompt)
+
+        audio_file_path = False
+        # Note: Audio analysis not supported in Chat Completions API
+        audio_note = (
+            " (Note: Audio file provided but analysis limited to transcript)"
+            if audio_file_path
+            else ""
+        )
+
+        messages = [
+            {
+                "role": "system",
+                "content": f"You are an expert technical interviewer and communication evaluator. Analyze the interview transcript for comprehensive assessment.{audio_note}",
+            },
+            {"role": "user", "content": prompt},
+        ]
+        response = await call_open_ai(messages)
     update_interview_pre_evaluation_query = """
         INSERT INTO
             candidate_ai_interview_evaluation
