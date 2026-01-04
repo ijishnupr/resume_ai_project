@@ -1,6 +1,8 @@
+import re
+import json
 import datetime
 import os
-
+import openai
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
@@ -11,11 +13,92 @@ from src.interview.model import (
     ConversationRequest,
     PatchInterviewViolation,
 )
-from src.interview.prompts import InstructionType, get_base_instructions
+from src.interview.prompts import (
+    InstructionType,
+    get_base_instructions,
+    get_evaluation_prompt,
+)
 from src.shared.dependency import UserPayload
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
+def _normalize_highlights(highlights: list) -> list:
+    if not isinstance(highlights, list):
+        return [
+            "Notice Period: Not specified",
+            "Expected CTC: Not specified",
+            "Relocation: Not specified",
+        ]
+
+    required = ["Notice Period:", "Expected CTC:", "Relocation:"]
+    normalized = []
+    # map for quick lookup
+    for label in required:
+        found = next(
+            (h for h in highlights if isinstance(h, str) and h.startswith(label)), None
+        )
+        normalized.append(found if found else f"{label} Not specified")
+    # Optional auth/work preference
+    optional = next(
+        (
+            h
+            for h in highlights
+            if isinstance(h, str)
+            and (h.startswith("Authorization:") or h.startswith("Work Preference:"))
+        ),
+        None,
+    )
+    if optional:
+        normalized.append(optional)
+    return normalized
+
+
+async def call_open_ai(prompt: str, audio_file_path: str | None = None):
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+    # Note: Audio analysis not supported in Chat Completions API
+    audio_note = (
+        " (Note: Audio file provided but analysis limited to transcript)"
+        if audio_file_path
+        else ""
+    )
+
+    messages = [
+        {
+            "role": "system",
+            "content": f"You are an expert technical interviewer and communication evaluator. Analyze the interview transcript for comprehensive assessment.{audio_note}",
+        },
+        {"role": "user", "content": prompt},
+    ]
+
+    # try:
+    resp = client.chat.completions.create(
+        model="gpt-4o", messages=messages, temperature=0.3, max_tokens=2500
+    )
+    txt = resp.choices[0].message.content.strip()
+
+    match = re.search(r"\{[\s\S]*\}", txt)
+    if not match:
+        raise ValueError(f"Invalid model output, JSON not found:\n{txt}")
+
+    data = json.loads(match.group())
+
+    # Normalize highlights
+    if isinstance(data, dict) and "highlights" in data:
+        data["highlights"] = _normalize_highlights(data["highlights"])
+
+    # Add metadata
+    data["evaluation_metadata"] = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "evaluation_type": "transcript_only",
+    }
+
+    return data
+
+    # except Exception as e:
+    #     return None
 
 
 async def open_ai(prompt):
@@ -107,10 +190,12 @@ async def get_interview_details(interview_id: str, db):
     ciqs.id,
     ciqs.created_at,
     ciqs.status,
+    ciqs.metadata,
     UPPER(ciqs.interview_mode) AS interview_type,
     'Ylogx' AS company_name,
-
+    ciqs.interview_mode,
     jd.job_title,
+    ciqs.transcript,
     jd.job_description,
 
 
@@ -401,3 +486,58 @@ async def update_interview_violation(
         },
     )
     return {"message": "Termination Details Updated"}
+
+
+async def update_interview_status_to_complete(interview_id: str, user: UserPayload, db):
+    conn, cur = db
+    interview_data = await get_interview_details(interview_id, db)
+    if interview_data["interview_mode"] == "prescreen":
+        prompt = get_evaluation_prompt(
+            InstructionType("PRESCREENING"),
+            interview_data["transcript"],
+            interview_data["job_description"],
+            interview_data["candidate_resume"],
+            interview_data["metadata"],
+        )
+        response = await call_open_ai(prompt)
+
+    else:
+        prompt = await get_interview_details(interview_id, db)
+    if interview_data["interview_mode"] == "technical":
+        prompt = get_evaluation_prompt(
+            InstructionType("PRESCREENING"),
+            interview_data["transcript"],
+            interview_data["job_description"],
+            interview_data["candidate_resume"],
+            interview_data["metadata"],
+        )
+        response = await call_open_ai(prompt)
+    update_interview_pre_evaluation_query = """
+        INSERT INTO
+            candidate_ai_interview_evaluation
+        (candidate_id,interview_session_id,overall_score,evaluation_summary,ai_feedback)
+        VALUES
+            ( %(user_id)s,%(interview_id)s,%(overall_score)s,%(evaluation_summary)s,%(ai_feedback)s )
+
+        """
+    await cur.execute(
+        update_interview_pre_evaluation_query,
+        {
+            "user_id": user.user_id,
+            "interview_id": interview_id,
+            "overall_score": response["fit_score"],
+            "evaluation_summary": response["prescreening_summary"],
+            "ai_feedback": Jsonb(response["evaluation_metadata"]),
+        },
+    )
+    update_interview_status_query = """
+        UPDATE
+            candidate_interview_question_session
+        SET
+            status = 'completed'
+        WHERE
+            id = %(interview_id)s
+
+        """
+    await cur.execute(update_interview_status_query, {"interview_id": interview_id})
+    return {"message": "Interview Status Updated"}

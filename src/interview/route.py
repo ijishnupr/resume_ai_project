@@ -13,6 +13,7 @@ from src.interview.service import (
     list_interview,
     start_interview,
     update_interview_status,
+    update_interview_status_to_complete,
     update_interview_violation,
 )
 from src.shared.db import get_connection
@@ -79,8 +80,17 @@ async def edit_conversation_route(
     return await edit_conversation(interview_id, index, request.user, db)
 
 
-@route.post("/{interview_id}/violation")
+@route.post("/{interview_id}/violation", dependencies=PROTECTED)
 async def update_interview_violation_route(
     interview_id: str, request: PatchInterviewViolation, db=Depends(get_connection)
 ):
     return await update_interview_violation(interview_id, request, db)
+
+
+@route.post("/{interview_id}/complete", dependencies=PROTECTED)
+async def update_interview_status_to_complete_route(
+    interview_id: str, request: Request, db=Depends(get_connection)
+):
+    return await update_interview_status_to_complete(
+        interview_id, request.state.user, db
+    )
