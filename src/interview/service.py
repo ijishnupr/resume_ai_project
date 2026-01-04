@@ -372,7 +372,8 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
         candidate_interview_question_session
     SET
         termination_reason = %(interview_status)s,
-        ai_detected_response = %(ai_detected_response)s
+        ai_detected_response = %(ai_detected_response)s,
+        annotated_response = %(ai_detected_response)s
 
     WHERE
         id = %(interview_id)s
