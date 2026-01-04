@@ -218,6 +218,8 @@ CREATE TABLE candidate_technical_L1_question (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+
 ----------------------------------------------------------
 -- TABLE: interview_credits
 ----------------------------------------------------------
@@ -235,6 +237,15 @@ CREATE TABLE interview_credits (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+CREATE TABLE prompt_config(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    prompt TEXT,
+    prompt_code VARCHAR(100)
+)
+
 
 ----------------------------------------------------------
 -- FOREIGN KEY CONSTRAINTS
