@@ -326,8 +326,11 @@ async def start_interview(interview_id: str, user: UserPayload, db):
 
     # """
     # await cur.execute(insert_interview_status, {"interview_id": interview_id})
-
-    return token
+    return {
+        "value": token["value"],
+        "expires_at": token["expires_at"],
+        "instructions": token["session"]["instructions"],
+    }
 
 
 async def insert_conversation(
