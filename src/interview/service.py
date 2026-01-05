@@ -123,7 +123,7 @@ async def create_ai_session(prompt: str):
         session_config = {
             "session": {
                 "type": "realtime",
-                "model": "<your model deployment name>",
+                "model": "gpt-realtime",
                 "instructions": prompt,
                 "audio": {
                     "output": {
@@ -327,10 +327,7 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     # """
     # await cur.execute(insert_interview_status, {"interview_id": interview_id})
 
-    return {
-        **token["client_secret"],
-        "instructions": instructions,
-    }
+    return token
 
 
 async def insert_conversation(
