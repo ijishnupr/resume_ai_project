@@ -21,7 +21,9 @@ from src.interview.prompts import (
 from src.shared.dependency import UserPayload
 
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+AZURE_OPENAI_REALTIME_ENDPOINT = os.getenv("AZURE_OPENAI_REALTIME_ENDPOINT")
+AZURE_OPENAI_REALTIME_API_KEY = os.getenv("AZURE_OPENAI_REALTIME_API_KEY")
+AZURE_OPENAI_REALTIME_VERSION = os.getenv("AZURE_OPENAI_REALTIME_VERSION")
 
 
 def _normalize_highlights(highlights: list) -> list:
@@ -94,7 +96,6 @@ def _build_client(api_key: str | None = None):
 def call_open_ai(messages):
     client = _build_client()
 
-    # try:
     resp = client.chat.completions.create(
         model="gpt-4o", messages=messages, temperature=0.3, max_tokens=2500
     )
@@ -106,11 +107,9 @@ def call_open_ai(messages):
 
     data = json.loads(match.group())
 
-    # Normalize highlights
     if isinstance(data, dict) and "highlights" in data:
         data["highlights"] = _normalize_highlights(data["highlights"])
 
-    # Add metadata
     data["evaluation_metadata"] = {
         "timestamp": datetime.datetime.now().isoformat(),
         "evaluation_type": "transcript_only",
@@ -118,29 +117,30 @@ def call_open_ai(messages):
 
     return data
 
-    # except Exception as e:
-    #     return None
 
-
-async def open_ai(prompt):
-    async with httpx.AsyncClient() as client:
+async def create_ai_session(prompt: str):
+    async with httpx.AsyncClient(timeout=10) as client:
         response = await client.post(
-            "https://api.openai.com/v1/realtime/sessions",
+            AZURE_OPENAI_REALTIME_ENDPOINT,
             headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "api-key": AZURE_OPENAI_REALTIME_API_KEY,
                 "Content-Type": "application/json",
             },
             json={
-                "model": "gpt-4o-realtime-preview-2024-12-17",
+                "model": "gpt-realtime",
                 "voice": "alloy",
-                "instructions": prompt,
+                "input": [{"role": "system", "content": prompt}],
             },
         )
 
         if response.status_code != 200:
             raise HTTPException(
-                status_code=response.status_code, detail="Failed to create session"
+                status_code=response.status_code,
+                detail=f"Realtime session failed: {response.text}",
             )
+
+        if not response.content:
+            raise RuntimeError("Azure returned empty response body")
 
         return response.json()
 
@@ -274,7 +274,7 @@ async def get_ephemeral_token(interview: dict, db):
         "None",
         "None",
     )
-    response = await open_ai(instructions)
+    response = await create_ai_session(instructions)
     return response, instructions
 
 
