@@ -120,17 +120,25 @@ def call_open_ai(messages):
 
 async def create_ai_session(prompt: str):
     async with httpx.AsyncClient(timeout=10) as client:
+        session_config = {
+            "session": {
+                "type": "realtime",
+                "model": "<your model deployment name>",
+                "instructions": prompt,
+                "audio": {
+                    "output": {
+                        "voice": "marin",
+                    },
+                },
+            },
+        }
         response = await client.post(
             AZURE_OPENAI_REALTIME_ENDPOINT,
             headers={
-                "api-key": AZURE_OPENAI_REALTIME_API_KEY,
+                "Authorization": f"Bearer {AZURE_OPENAI_REALTIME_API_KEY}",
                 "Content-Type": "application/json",
             },
-            json={
-                "model": "gpt-realtime",
-                "voice": "alloy",
-                "input": [{"role": "system", "content": prompt}],
-            },
+            json=session_config,
         )
 
         if response.status_code != 200:
