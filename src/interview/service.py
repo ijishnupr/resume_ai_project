@@ -392,10 +392,10 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"message": "Interview Not Found"},
         )
-    # conversation = interview["transcript"]
+    conversation = interview["transcript"]
 
-    # prompt = f"This interview violated the interview this is the conversation he had with the interviewer{conversation}"
-    # ai_detected_response = await open_ai(prompt)
+    prompt = f"This interview violated the interview this is the conversation he had with the interviewer{conversation}"
+    ai_detected_response = await call_open_ai(prompt)
 
     update_interview_status_query = """
     UPDATE
@@ -414,7 +414,7 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
         {
             "interview_status": interview_status,
             "interview_id": interview_id,
-            "ai_detected_response": Jsonb(interview["transcript"]),
+            "ai_detected_response": Jsonb(ai_detected_response),
         },
     )
 
