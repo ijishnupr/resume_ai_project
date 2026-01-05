@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status, Request
 import json
 import os
 import secrets
@@ -6,7 +7,6 @@ import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from dotenv import load_dotenv
-from fastapi import Request
 
 from src.auth.model import (
     LoginRequest,
@@ -68,7 +68,9 @@ async def user_login(client_req: Request, request: LoginRequest, db):
     await cur.execute(get_user_query, {"email": request.username})
     user_record = await cur.fetchone()
     if not user_record:
-        return {"error": "Invalid usercode"}
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid usercode"
+        )
 
     password = user_record["password"]
     ph = PasswordHasher()
