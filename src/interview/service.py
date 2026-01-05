@@ -55,8 +55,44 @@ def _normalize_highlights(highlights: list) -> list:
     return normalized
 
 
-async def call_open_ai(messages):
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+def _build_client(api_key: str | None = None):
+    """Construct OpenAI client for GPT-4o evaluation.
+
+    Uses AZURE_OPENAI_EVAL_* or AZURE_OPENAI_* env vars (separate from realtime creds).
+    """
+    # GPT-4o evaluation endpoint (separate from realtime endpoint)
+    azure_endpoint = (
+        (
+            os.getenv("AZURE_OPENAI_EVAL_ENDPOINT")
+            or os.getenv("AZURE_OPENAI_ENDPOINT")
+            or ""
+        )
+        .rstrip("/")
+        .strip("'")
+    )
+    azure_key = (
+        os.getenv("AZURE_OPENAI_EVAL_API_KEY")
+        or os.getenv("AZURE_OPENAI_API_KEY")
+        or api_key
+    )
+    azure_version = (
+        os.getenv("AZURE_OPENAI_EVAL_VERSION")
+        or os.getenv("OPENAI_API_VERSION")
+        or "2024-05-01-preview"
+    )
+
+    if azure_endpoint and azure_key:
+        return openai.AzureOpenAI(
+            api_key=azure_key,
+            api_version=azure_version,
+            azure_endpoint=azure_endpoint,
+        )
+
+    return openai.OpenAI(api_key=api_key)
+
+
+def call_open_ai(messages):
+    client = _build_client()
 
     # try:
     resp = client.chat.completions.create(
@@ -502,7 +538,7 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
             },
             {"role": "user", "content": prompt},
         ]
-        response = await call_open_ai(messages)
+        response = call_open_ai(messages)
 
     else:
         prompt = await get_evaluation_prompt(
@@ -529,7 +565,7 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
             },
             {"role": "user", "content": prompt},
         ]
-        response = await call_open_ai(messages)
+        response = call_open_ai(messages)
     update_interview_pre_evaluation_query = """
         INSERT INTO
             candidate_ai_interview_evaluation
