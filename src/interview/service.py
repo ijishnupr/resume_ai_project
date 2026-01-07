@@ -298,7 +298,6 @@ async def get_ephemeral_token(interview: dict, db):
     # generated_questions_section = interview["generated_questions_section"]
     # custom_questions_section = interview["custom_questions_section"]
     instructions = await get_base_instructions(
-        db,
         InstructionType("PRESCREENING"),
         job_title,
         candidate_resume,
@@ -463,7 +462,8 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
         ai_detected_response = %(ai_detected_response)s,
         annotated_response = %(ai_detected_response)s,
         end_time = CURRENT_TIMESTAMP,
-        total_duration_minutes = %(total_duration_minutes)s
+        total_duration_minutes = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time)) / 60
+
 
     WHERE
         id = %(interview_id)s
@@ -475,10 +475,6 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
             "interview_status": interview_status,
             "interview_id": interview_id,
             "ai_detected_response": Jsonb(ai_detected_response),
-            "total_duration_minutes": (
-                interview["end_time"] - interview["start_time"]
-            ).total_seconds()
-            / 60,
         },
     )
 
@@ -588,7 +584,6 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
     interview_data = await get_interview_details(interview_id, db)
     if interview_data["interview_mode"] == "prescreen":
         prompt = await get_evaluation_prompt(
-            db,
             InstructionType("PRESCREENING"),
             interview_data["transcript"],
             interview_data["job_description"],
@@ -614,7 +609,6 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
 
     else:
         prompt = await get_evaluation_prompt(
-            db,
             InstructionType("PRESCREENING"),
             interview_data["transcript"],
             interview_data["job_description"],
@@ -656,9 +650,6 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
             "ai_feedback": Jsonb(response["evaluation_metadata"]),
         },
     )
-    total_duration_minutes = (
-        interview_data["end_time"] - interview_data["start_time"]
-    ).total_seconds() / 60
 
     update_interview_status_query = """
         UPDATE
@@ -666,7 +657,8 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
         SET
             status = 'completed',
             end_time = CURRENT_TIMESTAMP,
-            total_duration_minutes = %(total_duration_minutes)s
+            total_duration_minutes = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time)) / 60
+
         WHERE
             id = %(interview_id)s
 
@@ -676,7 +668,6 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
         update_interview_status_query,
         {
             "interview_id": interview_id,
-            "total_duration_minutes": total_duration_minutes,
         },
     )
     return {"message": "Interview Status Updated"}
