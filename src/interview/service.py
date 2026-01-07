@@ -95,6 +95,15 @@ def _build_client(api_key: str | None = None):
 
 
 def call_open_ai(messages):
+    """
+    Sends messages to OpenAI, extracts JSON, and adds evaluation metadata.
+
+    Args:
+        messages: List of chat messages to send to the model.
+
+    Returns:
+        dict: The parsed JSON response with normalized highlights and timestamps.
+    """
     client = _build_client()
 
     resp = client.chat.completions.create(
@@ -120,6 +129,15 @@ def call_open_ai(messages):
 
 
 async def call_open_ai_evaluation(messages):
+    """
+    Calls OpenAI to retrieve and parse a raw JSON response.
+
+    Args:
+        messages: List of chat messages to send to the model.
+
+    Returns:
+        dict | list: The parsed JSON content (supports both objects and arrays).
+    """
     client = _build_client()
 
     resp = client.chat.completions.create(
@@ -141,6 +159,19 @@ async def call_open_ai_evaluation(messages):
 
 
 async def create_ai_session(prompt: str):
+    """
+    Initiates a realtime Azure OpenAI session with the specified instructions.
+
+    Args:
+        prompt: The system instructions (persona/guidelines) for the AI.
+
+    Returns:
+        dict: The created session details including connection tokens.
+
+    Raises:
+        HTTPException: If the Azure API request fails.
+    """
+
     async with httpx.AsyncClient(timeout=10) as client:
         session_config = {
             "session": {
@@ -420,36 +451,44 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
 
     messages = [
         {
-            "role": "system",
-            "content": (
-                "You are an expert interview transcript analyst. "
-                "Return ONLY valid JSON. Do not include explanations, markdown, or extra text."
-            ),
-        },
-        {
             "role": "user",
-            "content": f"""Analyze this conversation transcript where speech-to-text errors have corrupted the user's responses. The AI's responses are accurate and provide context clues.
+            "content": f"""
+        You are given an interview conversation transcript.
+        The AI messages are accurate and should be used as context.
+        The user's messages may contain speech-to-text errors.
 
-    Conversation:
-    {conversation}
+        Conversation Transcript:
+        {conversation}
 
-    Task: Reconstruct what the user likely said by:
-    1. Using the AI's question/response as context
-    2. Finding phonetically similar real words/phrases
-    3. Ensuring responses make sense in an interview setting
+        TASK:
+        For each conversational turn:
+        - Keep the AI message EXACTLY as provided
+        - Reconstruct what the USER most likely intended to say
 
-    Return a JSON array with this structure:
-    [
-      {{
-        "ai": "<original AI text>",
-        "user": "<corrected user text>",
-        "time_stamp": "<original timestamp>"
-      }},
-      ...
-    ]
+        RECONSTRUCTION GUIDELINES:
+        1. Use the AI's message as contextual grounding
+        2. Fix phonetic transcription errors (e.g., "dock er" → "Docker")
+        3. Remove filler words and stutters
+        4. Ensure answers are coherent, concise, and interview-appropriate
+        5. Do NOT exaggerate or improve the user's qualifications
+        6. If a sentence is incomplete, complete it conservatively
+        7. If meaning is ambiguous, choose the safest neutral interpretation
 
-    Focus on making the user responses coherent, professional, and contextually appropriate.""",
-        },
+        OUTPUT FORMAT (JSON ARRAY ONLY):
+        [
+        {{
+            "ai": "<original AI text>",
+            "user": "<corrected and reconstructed user text>",
+            "time_stamp": "<original timestamp>"
+        }}
+        ]
+
+        VALIDATION REQUIREMENTS:
+        - JSON must be parseable
+        - Array length must match number of AI–User turns
+        - No null fields
+        """,
+        }
     ]
 
     ai_detected_response = await call_open_ai_evaluation(messages)
