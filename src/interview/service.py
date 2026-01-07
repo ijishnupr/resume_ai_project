@@ -215,9 +215,9 @@ async def interview_detail(interview_id: str, user: UserPayload, db):
         UPPER(ciqs.interview_mode) AS interview_type
     FROM
         candidate_interview_question_session ciqs
-    JOIN
+    LEFT JOIN
         job_requisition jr ON ciqs.job_requisition_id = jr.id
-    JOIN
+    LEFT JOIN
         job_description jd ON jr.job_description_id = jd.id
     WHERE
         ciqs.id = %(interview_id)s
@@ -247,6 +247,8 @@ async def get_interview_details(interview_id: str, db):
     ciqs.interview_mode,
     jd.job_title,
     ciqs.transcript,
+    ciqs.start_time,
+    ciqs.end_time,
     jd.job_description,
 
 
@@ -318,7 +320,8 @@ async def start_interview(interview_id: str, user: UserPayload, db):
     UPDATE
         candidate_interview_question_session
     SET
-     status = 'in_progress'
+     status = 'in_progress',
+     start_time = CURRENT_TIMESTAMP
     WHERE
         id = %(interview_id)s
     """
@@ -458,7 +461,9 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
     SET
         termination_reason = %(interview_status)s,
         ai_detected_response = %(ai_detected_response)s,
-        annotated_response = %(ai_detected_response)s
+        annotated_response = %(ai_detected_response)s,
+        end_time = CURRENT_TIMESTAMP,
+        total_duration_minutes = %(total_duration_minutes)s
 
     WHERE
         id = %(interview_id)s
@@ -470,6 +475,10 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
             "interview_status": interview_status,
             "interview_id": interview_id,
             "ai_detected_response": Jsonb(ai_detected_response),
+            "total_duration_minutes": (
+                interview["end_time"] - interview["start_time"]
+            ).total_seconds()
+            / 60,
         },
     )
 
@@ -647,14 +656,27 @@ async def update_interview_status_to_complete(interview_id: str, user: UserPaylo
             "ai_feedback": Jsonb(response["evaluation_metadata"]),
         },
     )
+    total_duration_minutes = (
+        interview_data["end_time"] - interview_data["start_time"]
+    ).total_seconds() / 60
+
     update_interview_status_query = """
         UPDATE
             candidate_interview_question_session
         SET
-            status = 'completed'
+            status = 'completed',
+            end_time = CURRENT_TIMESTAMP,
+            total_duration_minutes = %(total_duration_minutes)s
         WHERE
             id = %(interview_id)s
 
         """
-    await cur.execute(update_interview_status_query, {"interview_id": interview_id})
+
+    await cur.execute(
+        update_interview_status_query,
+        {
+            "interview_id": interview_id,
+            "total_duration_minutes": total_duration_minutes,
+        },
+    )
     return {"message": "Interview Status Updated"}
