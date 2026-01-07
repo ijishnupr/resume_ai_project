@@ -1,0 +1,19 @@
+meta {
+  name: dxszgbv
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://api.openai.com/v1/models
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{}}
+}
+
+settings {
+  encodeUrl: false
+}
