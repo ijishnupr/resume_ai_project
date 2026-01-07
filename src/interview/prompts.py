@@ -518,3 +518,59 @@ async def get_evaluation_prompt(
     )
 
     return final_prompt
+
+
+def conversation_reconstruct_prompt(conversation):
+    """
+    Generates the prompt used to clean and reconstruct the interview transcript.
+
+    This instructs the LLM to fix speech-to-text errors in the user's responses
+    using the AI's questions as context, while keeping AI text unchanged.
+
+    Args:
+        conversation: The raw conversation transcript to be processed.
+
+    Returns:
+        list: A list of messages formatted for the LLM API.
+    """
+    return [
+        {
+            "role": "user",
+            "content": f"""
+        You are given an interview conversation transcript.
+        The AI messages are accurate and should be used as context.
+        The user's messages may contain speech-to-text errors.
+
+        Conversation Transcript:
+        {conversation}
+
+        TASK:
+        For each conversational turn:
+        - Keep the AI message EXACTLY as provided
+        - Reconstruct what the USER most likely intended to say
+
+        RECONSTRUCTION GUIDELINES:
+        1. Use the AI's message as contextual grounding
+        2. Fix phonetic transcription errors (e.g., "dock er" → "Docker")
+        3. Remove filler words and stutters
+        4. Ensure answers are coherent, concise, and interview-appropriate
+        5. Do NOT exaggerate or improve the user's qualifications
+        6. If a sentence is incomplete, complete it conservatively
+        7. If meaning is ambiguous, choose the safest neutral interpretation
+
+        OUTPUT FORMAT (JSON ARRAY ONLY):
+        [
+        {{
+            "ai": "<original AI text>",
+            "user": "<corrected and reconstructed user text>",
+            "time_stamp": "<original timestamp>"
+        }}
+        ]
+
+        VALIDATION REQUIREMENTS:
+        - JSON must be parseable
+        - Array length must match number of AI–User turns
+        - No null fields
+        """,
+        }
+    ]

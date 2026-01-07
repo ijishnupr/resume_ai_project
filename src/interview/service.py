@@ -16,6 +16,7 @@ from src.interview.model import (
 )
 from src.interview.prompts import (
     InstructionType,
+    conversation_reconstruct_prompt,
     get_base_instructions,
     get_evaluation_prompt,
 )
@@ -28,13 +29,6 @@ AZURE_OPENAI_REALTIME_VERSION = os.getenv("AZURE_OPENAI_REALTIME_VERSION")
 
 
 def _normalize_highlights(highlights: list) -> list:
-    if not isinstance(highlights, list):
-        return [
-            "Notice Period: Not specified",
-            "Expected CTC: Not specified",
-            "Relocation: Not specified",
-        ]
-
     required = ["Notice Period:", "Expected CTC:", "Relocation:"]
     normalized = []
     # map for quick lookup
@@ -449,47 +443,7 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
         )
     conversation = interview["transcript"]
 
-    messages = [
-        {
-            "role": "user",
-            "content": f"""
-        You are given an interview conversation transcript.
-        The AI messages are accurate and should be used as context.
-        The user's messages may contain speech-to-text errors.
-
-        Conversation Transcript:
-        {conversation}
-
-        TASK:
-        For each conversational turn:
-        - Keep the AI message EXACTLY as provided
-        - Reconstruct what the USER most likely intended to say
-
-        RECONSTRUCTION GUIDELINES:
-        1. Use the AI's message as contextual grounding
-        2. Fix phonetic transcription errors (e.g., "dock er" → "Docker")
-        3. Remove filler words and stutters
-        4. Ensure answers are coherent, concise, and interview-appropriate
-        5. Do NOT exaggerate or improve the user's qualifications
-        6. If a sentence is incomplete, complete it conservatively
-        7. If meaning is ambiguous, choose the safest neutral interpretation
-
-        OUTPUT FORMAT (JSON ARRAY ONLY):
-        [
-        {{
-            "ai": "<original AI text>",
-            "user": "<corrected and reconstructed user text>",
-            "time_stamp": "<original timestamp>"
-        }}
-        ]
-
-        VALIDATION REQUIREMENTS:
-        - JSON must be parseable
-        - Array length must match number of AI–User turns
-        - No null fields
-        """,
-        }
-    ]
+    messages = conversation_reconstruct_prompt(conversation)
 
     ai_detected_response = await call_open_ai_evaluation(messages)
 
