@@ -1,9 +1,10 @@
-import re
-import json
 import datetime
+import json
 import os
-import openai
+import re
+
 import httpx
+import openai
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
@@ -116,6 +117,27 @@ def call_open_ai(messages):
     }
 
     return data
+
+
+async def call_open_ai_evaluation(messages):
+    client = _build_client()
+
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        temperature=0.3,
+        max_tokens=2500,
+    )
+
+    txt = resp.choices[0].message.content.strip()
+
+    match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", txt)
+    if not match:
+        raise ValueError(f"Invalid model output, JSON not found:\n{txt}")
+
+    parsed = json.loads(match.group())
+
+    return parsed
 
 
 async def create_ai_session(prompt: str):
@@ -394,8 +416,41 @@ async def update_interview_status(interview_id: str, interview_status: str, db):
         )
     conversation = interview["transcript"]
 
-    prompt = f"This interview violated the interview this is the conversation he had with the interviewer{conversation}"
-    ai_detected_response = await call_open_ai(prompt)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert interview transcript analyst. "
+                "Return ONLY valid JSON. Do not include explanations, markdown, or extra text."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""Analyze this conversation transcript where speech-to-text errors have corrupted the user's responses. The AI's responses are accurate and provide context clues.
+
+    Conversation:
+    {conversation}
+
+    Task: Reconstruct what the user likely said by:
+    1. Using the AI's question/response as context
+    2. Finding phonetically similar real words/phrases
+    3. Ensuring responses make sense in an interview setting
+
+    Return a JSON array with this structure:
+    [
+      {{
+        "ai": "<original AI text>",
+        "user": "<corrected user text>",
+        "time_stamp": "<original timestamp>"
+      }},
+      ...
+    ]
+
+    Focus on making the user responses coherent, professional, and contextually appropriate.""",
+        },
+    ]
+
+    ai_detected_response = await call_open_ai_evaluation(messages)
 
     update_interview_status_query = """
     UPDATE
@@ -452,7 +507,7 @@ async def edit_conversation(interview_id: str, index: int, conversation: str, db
     conn, cur = db
     get_interview_query = """
     SELECT
-        transcript
+        ai_detected_response
     FROM
         candidate_interview_question_session
     WHERE
@@ -466,7 +521,7 @@ async def edit_conversation(interview_id: str, index: int, conversation: str, db
             content={"message": "Interview Not Found"},
         )
 
-    transcript = interview["transcript"]
+    transcript = interview["ai_detected_response"]
     if index < 0 or index >= len(transcript):
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
